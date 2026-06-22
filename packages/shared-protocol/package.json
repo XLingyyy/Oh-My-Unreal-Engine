@@ -1,0 +1,33 @@
+{
+  "name": "@omue/shared-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OMUE 共享数据结构与 API contract",
+  "type": "module",
+  "main": "dist-cjs/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist-cjs/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig.cjs.json && node scripts/build-cjs-marker.mjs",
+    "build:esm": "tsc",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node scripts/build-cjs-marker.mjs",
+    "build:cjs-marker": "node scripts/build-cjs-marker.mjs",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist dist-cjs",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "dist-cjs",
+    "scripts/build-cjs-marker.mjs"
+  ],
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

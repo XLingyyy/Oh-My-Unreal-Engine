@@ -1,0 +1,24 @@
+{
+  "name": "omue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OMUE — Oh My UE: Unreal Engine 开发控制台与 AI 协作工作台",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:desktop",
+    "build:shared": "npm -w @omue/shared-protocol run build",
+    "build:desktop": "npm -w @omue/desktop run build",
+    "typecheck": "npm run typecheck:shared && npm run typecheck:desktop",
+    "typecheck:shared": "npm -w @omue/shared-protocol run typecheck",
+    "typecheck:desktop": "npm -w @omue/desktop run typecheck",
+    "test:agent-ui": "npm run build:shared && npm -w @omue/desktop run test:agent-ui",
+    "clean": "npm -w @omue/desktop run clean && npm -w @omue/shared-protocol run clean",
+    "dev:desktop": "npm -w @omue/desktop run dev"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

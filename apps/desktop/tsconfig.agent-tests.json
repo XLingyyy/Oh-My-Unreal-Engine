@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist-agent-tests",
+    "rootDir": "src",
+    "declaration": false,
+    "sourceMap": false,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/test/**/*.ts",
+    "src/shared/context-snapshot-builder.ts",
+    "src/main/agent-context-snapshot.ts",
+    "src/main/agent-loop-mock-stubs.ts",
+    "src/main/agent-proposal-fixtures.ts",
+    "src/main/agent-session-validation.ts",
+    "src/main/ai-blueprint-propose-fix-provider-types.ts",
+    "src/main/ai-blueprint-propose-fix-provider.ts",
+    "src/main/ai-blueprint-explanation-provider-types.ts",
+    "src/main/settings/provider-authority.ts",
+    "src/main/settings/settingsMutationService.ts",
+    "src/renderer/components/workbench/agentCardMapper.ts",
+    "src/renderer/components/workbench/targetScopeState.ts",
+    "src/renderer/components/workbench/providerCardState.ts",
+    "src/renderer/components/workbench/workbenchStatusViewModel.ts",
+    "src/renderer/components/workbench/inspectorDataAdapter.ts",
+    "src/renderer/components/workbench/languagePreferenceState.ts",
+    "src/main/settings/provider-authority.ts"
+  ]
+}

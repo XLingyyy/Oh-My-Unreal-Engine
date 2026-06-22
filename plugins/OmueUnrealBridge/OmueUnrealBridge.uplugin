@@ -1,0 +1,25 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "OMUE Unreal Bridge",
+  "Description": "Safety-first Unreal Editor bridge for OMUE, providing structured context, Blueprint diagnostics, sandbox writes, compile validation, and rollback support.",
+  "Category": "Editor",
+  "CreatedBy": "OMUE",
+  "CreatedByURL": "https://github.com/XLingyyy/Oh-My-Unreal-Engine",
+  "DocsURL": "https://github.com/XLingyyy/Oh-My-Unreal-Engine/tree/main/plugins/OmueUnrealBridge",
+  "MarketplaceURL": "",
+  "SupportURL": "https://github.com/XLingyyy/Oh-My-Unreal-Engine/issues",
+  "CanContainContent": false,
+  "IsBetaVersion": true,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "EnabledByDefault": false,
+  "Modules": [
+    {
+      "Name": "OmueUnrealBridge",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

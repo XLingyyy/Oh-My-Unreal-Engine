@@ -1,0 +1,48 @@
+{
+  "name": "@omue/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OMUE Desktop — UE 开发控制台与上下文工作台",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "node scripts/dev-desktop.mjs",
+    "build": "npm run build:renderer && npm run build:main && npm run build:preload",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:preload": "vite build --config vite.preload.config.ts",
+    "build:renderer": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test:agent-ui": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/*.test.js\"",
+    "test:legacy-ui-cleanup": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/legacy-ui-cleanup.test.js\"",
+    "test:agent-card-lifecycle": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/agent-card-lifecycle.test.js\"",
+    "test:agent-context-integration": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/agent-context-snapshot.test.js\"",
+    "test:target-scope-integration": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/target-scope-state.test.js\"",
+    "test:workbench-status-integration": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/workbench-status-view-model.test.js\" \"dist-agent-tests/test/inspector-data-adapter.test.js\"",
+    "test:settings-safety-surface": "npm -w @omue/shared-protocol run build && tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/settings-safety-surface.test.js\"",
+    "test:provider-authority": "tsc -p tsconfig.agent-tests.json && node --test \"dist-agent-tests/test/provider-authority.test.js\"",
+    "test:agent-real-provider-smoke": "node scripts/test-agent-real-provider-smoke.mjs",
+    "test:agent-real-context-smoke": "node scripts/test-agent-real-context-smoke.mjs",
+    "test:agent-real-target-smoke": "node scripts/test-agent-real-target-smoke.mjs",
+    "test:agent-real-status-smoke": "node scripts/test-agent-real-status-smoke.mjs",
+    "test:agent-real-safety-smoke": "node scripts/test-agent-real-safety-smoke.mjs",
+    "test:agent-real-recovery-smoke": "node scripts/test-agent-real-recovery-smoke.mjs",
+    "test:preload-artifact": "npm run build:main && npm run build:preload && node scripts/validate-preload-artifact.mjs",
+    "test:dev-port": "node scripts/test-dev-port.mjs",
+    "test:electron-runtime-real": "node scripts/test-electron-runtime-real.mjs",
+    "clean": "rm -rf dist dist-agent-tests"
+  },
+  "dependencies": {
+    "@omue/shared-protocol": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^8.2.2",
+    "electron": "^42.4.1",
+    "typescript": "^5.5.4",
+    "vite": "^8.0.16",
+    "wait-on": "^7.2.0"
+  }
+}

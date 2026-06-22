@@ -1,0 +1,146 @@
+:root,
+:root[data-theme='ue-agent'] {
+  --bg-app: #0B111A;
+  --bg-panel: #111827;
+  --bg-card: #182230;
+  --bg-card-soft: #1B2432;
+  --bg-input: #0F1623;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(59, 130, 246, 0.45);
+  --text-primary: #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --accent-blue: #3B82F6;
+  --accent-cyan: #22D3EE;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+  --font-sans: -apple-system, 'Segoe UI', system-ui, sans-serif;
+
+  --bg-base: var(--bg-app);
+  --bg-surface: var(--bg-panel);
+  --bg-card-hover: var(--bg-card-soft);
+  --border-default: var(--border-subtle);
+  --accent-user: var(--accent-cyan);
+  --accent-agent: var(--accent-blue);
+  --accent-system: var(--warning);
+  --accent-diff: var(--accent-cyan);
+  --accent-error: var(--danger);
+  --accent-success: var(--success);
+  --accent-warning: var(--warning);
+  --accent-primary: var(--accent-blue);
+  --accent-primary-strong: #1D4ED8;
+  --accent-primary-hover: #1E40AF;
+  --text-on-accent: #FFFFFF;
+  --shadow-strong: rgba(0, 0, 0, 0.45);
+}
+
+:root,
+:root[data-theme='github-dark'] {
+  --bg-base: #0d1117;
+  --bg-surface: #010409;
+  --bg-card: #161b22;
+  --bg-card-hover: #1f2630;
+  --bg-input: #0d1117;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border-default: #30363d;
+  --border-subtle: #21262d;
+  --accent-user: #7ee787;
+  --accent-agent: #a371f7;
+  --accent-system: #f0883e;
+  --accent-diff: #f0883e;
+  --accent-error: #f85149;
+  --accent-success: #7ee787;
+  --accent-warning: #d29922;
+  --accent-primary: #1f6feb;
+  --accent-primary-strong: #1158C7;
+  --accent-primary-hover: #0D4AA3;
+  --text-on-accent: #FFFFFF;
+  --shadow-strong: rgba(0, 0, 0, 0.45);
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Compatibility aliases consumed by workbench.css */
+  --bg-app: #0d1117;
+  --bg-panel: #010409;
+  --bg-card-soft: #1f2630;
+  --accent-blue: #1f6feb;
+  --accent-cyan: #7ee787;
+  --success: #7ee787;
+  --warning: #d29922;
+  --danger: #f85149;
+}
+
+:root[data-theme='vscode-dark'] {
+  --bg-base: #1e1e1e;
+  --bg-surface: #181818;
+  --bg-card: #252526;
+  --bg-card-hover: #2d2d30;
+  --bg-input: #1b1b1b;
+  --text-primary: #d4d4d4;
+  --text-secondary: #a6a6a6;
+  --text-muted: #858585;
+  --border-default: #3c3c3c;
+  --border-subtle: #2d2d30;
+  --accent-user: #6a9955;
+  --accent-agent: #c586c0;
+  --accent-system: #ce9178;
+  --accent-diff: #ce9178;
+  --accent-error: #f48771;
+  --accent-success: #89d185;
+  --accent-warning: #cca700;
+  --accent-primary: #007acc;
+  --accent-primary-strong: #005C99;
+  --accent-primary-hover: #004F84;
+  --text-on-accent: #FFFFFF;
+  --shadow-strong: rgba(0, 0, 0, 0.38);
+  --font-mono: Consolas, 'Cascadia Code', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Compatibility aliases consumed by workbench.css */
+  --bg-app: #1e1e1e;
+  --bg-panel: #181818;
+  --bg-card-soft: #2d2d30;
+  --accent-blue: #007acc;
+  --accent-cyan: #6a9955;
+  --success: #89d185;
+  --warning: #cca700;
+  --danger: #f48771;
+}
+
+:root[data-theme='light'] {
+  --bg-base: #ffffff;
+  --bg-surface: #f6f8fa;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f3f4f6;
+  --bg-input: #ffffff;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-muted: #6e7781;
+  --border-default: #d0d7de;
+  --border-subtle: #d8dee4;
+  --accent-user: #1a7f37;
+  --accent-agent: #8250df;
+  --accent-system: #bc4c00;
+  --accent-diff: #d1242f;
+  --accent-error: #cf222e;
+  --accent-success: #1a7f37;
+  --accent-warning: #9a6700;
+  --accent-primary: #0969da;
+  --accent-primary-strong: #0754AE;
+  --accent-primary-hover: #06448E;
+  --text-on-accent: #FFFFFF;
+  --shadow-strong: rgba(31, 35, 40, 0.18);
+  --font-mono: 'Cascadia Code', Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Compatibility aliases consumed by workbench.css */
+  --bg-app: #ffffff;
+  --bg-panel: #f6f8fa;
+  --bg-card-soft: #f3f4f6;
+  --accent-blue: #0969da;
+  --accent-cyan: #1a7f37;
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --danger: #cf222e;
+}

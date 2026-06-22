@@ -1,0 +1,45 @@
+.desktop-bootstrap-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.desktop-bootstrap-error__card {
+  width: min(640px, 100%);
+  padding: 28px;
+  border: 1px solid #7f1d1d;
+  border-radius: 12px;
+  background: #1f1720;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 35%);
+}
+
+.desktop-bootstrap-error__eyebrow {
+  margin: 0 0 8px;
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.desktop-bootstrap-error h1 {
+  margin: 0 0 16px;
+  font-size: 28px;
+}
+
+.desktop-bootstrap-error code {
+  display: block;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #fca5a5;
+}
+
+.desktop-bootstrap-error p {
+  margin: 10px 0 0;
+  line-height: 1.55;
+}
