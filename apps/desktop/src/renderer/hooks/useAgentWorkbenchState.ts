@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AgentApprovalRequestedEvent,
   AgentLoopCloseReason,
@@ -203,6 +203,10 @@ export function useAgentWorkbenchState(
 
   const [composerModeChoice, setComposerModeChoice] = useState<ComposerMode>(null);
   const [composerTargetChoice, setComposerTargetChoice] = useState<string | undefined>(undefined);
+
+  const [isDraftSession, setIsDraftSession] = useState(false);
+  const [draftFocusRequestId, setDraftFocusRequestId] = useState(0);
+  const pendingStartSessionIdRef = useRef<string | null>(null);
 
   const handleScenarioChange = useCallback(
     (next: MockBridgeScenario) => {
@@ -597,6 +601,9 @@ export function useAgentWorkbenchState(
   }, [copy.agentTransition.loadFailed, refreshSessions]);
 
   useEffect(() => {
+    if (isDraftSession) return;
+    if (pendingStartSessionIdRef.current) return;
+
     if (selectedSessionId && sessions.some(session => session.sessionId === selectedSessionId)) {
       return;
     }
@@ -609,7 +616,7 @@ export function useAgentWorkbenchState(
       null;
 
     setSelectedSessionId(nextSelection);
-  }, [selectedSessionId, sessions]);
+  }, [isDraftSession, selectedSessionId, sessions]);
 
   const sessionGroups = useMemo((): SessionGroups => {
     const active: RepairSessionRecord[] = [];
@@ -677,9 +684,18 @@ export function useAgentWorkbenchState(
   }, []);
 
   const handleNewSession = useCallback(() => {
+    pendingStartSessionIdRef.current = null;
+    setIsDraftSession(true);
     setSelectedSessionId(null);
     clearComposerChoice();
+    setDraftFocusRequestId(current => current + 1);
   }, [clearComposerChoice]);
+
+  const selectSession = useCallback((sessionId: string) => {
+    pendingStartSessionIdRef.current = null;
+    setIsDraftSession(false);
+    setSelectedSessionId(sessionId);
+  }, []);
 
   useEffect(() => {
     setComposerModeChoice(null);
@@ -716,8 +732,14 @@ export function useAgentWorkbenchState(
         if (!result.ok) {
           throw new Error(result.message);
         }
+        pendingStartSessionIdRef.current = result.sessionId;
+        setIsDraftSession(false);
         setSelectedSessionId(result.sessionId);
-        await refreshSessions();
+        try {
+          await refreshSessions();
+        } finally {
+          pendingStartSessionIdRef.current = null;
+        }
       } finally {
         setActionSessionId(null);
       }
@@ -745,8 +767,14 @@ export function useAgentWorkbenchState(
         if (!result.ok) {
           throw new Error(result.message);
         }
+        pendingStartSessionIdRef.current = result.sessionId;
+        setIsDraftSession(false);
         setSelectedSessionId(result.sessionId);
-        await refreshSessions();
+        try {
+          await refreshSessions();
+        } finally {
+          pendingStartSessionIdRef.current = null;
+        }
       } finally {
         setActionSessionId(null);
       }
@@ -780,6 +808,7 @@ export function useAgentWorkbenchState(
       if (!result.ok) {
         throw new Error(result.message);
       }
+      setIsDraftSession(false);
       setSelectedSessionId(sessionId);
       await refreshSessions();
     } finally {
@@ -1025,6 +1054,9 @@ export function useAgentWorkbenchState(
       approveSelected,
       rejectSelected,
       handleNewSession,
+      isDraftSession,
+      draftFocusRequestId,
+      selectSession,
     },
     composer: {
       state: composerState,

@@ -451,6 +451,7 @@ export const zhCN: DesktopCopy = {
       sessionProjectLabel: '项目',
       sessionScopeLabel: (scope: 'asset' | 'project') =>
         scope === 'asset' ? '资产会话' : '项目会话',
+      draftSessionLabel: '草稿 · 新会话',
     },
     chatInput: {
       placeholder: '询问 UE Agent...',
@@ -473,6 +474,8 @@ export const zhCN: DesktopCopy = {
       switchToAsset: '切换到资产范围',
       modeProject: '项目',
       modeAsset: '资产',
+      draftTitle: '新会话草稿',
+      draftDetail: '请在下方描述任务。只有发送后才会创建真实会话。',
     },
     rightInspector: {
       regionLabel: '检查器',

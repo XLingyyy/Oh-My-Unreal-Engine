@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDesktopCopy } from '../../i18n';
 import type { ComposerState, SendRequest, SendValidationResult } from './targetScopeState';
 
@@ -11,6 +11,7 @@ interface ChatInputV2Props {
   providerReady: boolean;
   diagnosisModel?: string;
   onOpenSettings?: () => void;
+  focusRequestId?: number;
 }
 
 export function ChatInputV2({
@@ -22,11 +23,19 @@ export function ChatInputV2({
   providerReady,
   diagnosisModel,
   onOpenSettings,
+  focusRequestId = 0,
 }: ChatInputV2Props) {
   const { copy } = useDesktopCopy();
   const inputCopy = copy.ueAgentUi.chatInput;
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (focusRequestId > 0) {
+      textareaRef.current?.focus();
+    }
+  }, [focusRequestId]);
 
   const mode = composerState.mode;
   const targetAssetPath = composerState.targetAssetPath;
@@ -93,10 +102,12 @@ export function ChatInputV2({
         </div>
       )}
       <textarea
+        ref={textareaRef}
         className="ue-chat-input-textarea"
         placeholder={inputCopy.placeholder}
         rows={1}
         aria-label={inputCopy.placeholder}
+        data-workbench-chat-input=""
         value={text}
         onChange={event => setText(event.target.value)}
         onKeyDown={event => {

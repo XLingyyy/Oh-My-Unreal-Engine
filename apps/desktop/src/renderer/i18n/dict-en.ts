@@ -451,6 +451,7 @@ export const en: DesktopCopy = {
       sessionProjectLabel: 'Project',
       sessionScopeLabel: (scope: 'asset' | 'project') =>
         scope === 'asset' ? 'Asset session' : 'Project session',
+      draftSessionLabel: 'Draft · New session',
     },
     chatInput: {
       placeholder: 'Ask UE Agent...',
@@ -473,6 +474,8 @@ export const en: DesktopCopy = {
       switchToAsset: 'Switch to asset scope',
       modeProject: 'Project',
       modeAsset: 'Asset',
+      draftTitle: 'New session draft',
+      draftDetail: 'Describe the task below. A real session will be created only after you send.',
     },
     rightInspector: {
       regionLabel: 'Inspector',

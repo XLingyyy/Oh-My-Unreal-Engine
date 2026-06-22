@@ -937,6 +937,29 @@
   color: var(--accent-error);
 }
 
+.wb-draft-empty-state[data-session-mode="draft"] {
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md, 6px);
+  padding: 32px 24px;
+  background: color-mix(in srgb, var(--accent-info, #5865f2) 4%, transparent);
+}
+
+.wb-draft-empty-state h2 {
+  color: var(--text-primary);
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.ue-chat-header-draft-label[data-session-mode="draft"] {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm, 4px);
+}
+
 .wb-empty,
 .wb-partial-warning {
   color: var(--text-secondary);

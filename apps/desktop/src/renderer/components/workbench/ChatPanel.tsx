@@ -175,7 +175,7 @@ export function ChatPanel({
   }, [state.agent]);
 
   const handleSelectSession = useCallback((sessionId: string) => {
-    state.agent.setSelectedSessionId(sessionId);
+    state.agent.selectSession(sessionId);
   }, [state.agent]);
 
   const handleResumeInterrupted = useCallback(async () => {
@@ -350,6 +350,7 @@ export function ChatPanel({
         onNewSession={handleNewSession}
         onResumeInterrupted={handleResumeInterrupted}
         hasInterrupted={interruptedSessionId !== null}
+        isDraftSession={state.agent.isDraftSession}
       />
       <div className="ue-chat-scroll">
         {hasBlockingError ? (
@@ -365,12 +366,21 @@ export function ChatPanel({
             detail={copy.shell.loadingDetail}
           />
         ) : selectedSession === null ? (
-          <EmptyState
-            title={copy.ueAgentUi.chatInput.placeholder}
-            detail={actionFeedback ?? copy.ueAgentUi.chatInput.hint}
-            composerMode={composer.state.mode}
-            composerTarget={composer.state.targetAssetPath}
-          />
+          state.agent.isDraftSession ? (
+            <DraftEmptyState
+              title={copy.ueAgentUi.chatInput.draftTitle}
+              detail={copy.ueAgentUi.chatInput.draftDetail}
+              composerMode={composer.state.mode}
+              composerTarget={composer.state.targetAssetPath}
+            />
+          ) : (
+            <EmptyState
+              title={copy.ueAgentUi.chatInput.placeholder}
+              detail={actionFeedback ?? copy.ueAgentUi.chatInput.hint}
+              composerMode={composer.state.mode}
+              composerTarget={composer.state.targetAssetPath}
+            />
+          )
         ) : (
           <>
             {state.bridge.error && (
@@ -435,6 +445,7 @@ export function ChatPanel({
         providerReady={providerReady}
         diagnosisModel={diagnosisModel}
         onOpenSettings={onOpenSettings}
+        focusRequestId={state.agent.draftFocusRequestId}
       />
     </section>
   );
@@ -454,6 +465,33 @@ function EmptyState({
   const { copy } = useDesktopCopy();
   return (
     <section className="wb-center-message">
+      <h2>{title}</h2>
+      <p>{detail}</p>
+      <p className="ue-card-meta">
+        {composerMode === 'asset' && composerTarget
+          ? `${copy.ueAgentUi.chatInput.targetLabel}: ${composerTarget}`
+          : composerMode === 'project'
+            ? copy.ueAgentUi.chatInput.modeProject
+            : ''}
+      </p>
+    </section>
+  );
+}
+
+function DraftEmptyState({
+  title,
+  detail,
+  composerMode,
+  composerTarget,
+}: {
+  title: string;
+  detail: string;
+  composerMode: 'project' | 'asset' | null;
+  composerTarget?: string;
+}) {
+  const { copy } = useDesktopCopy();
+  return (
+    <section className="wb-center-message wb-draft-empty-state" data-session-mode="draft">
       <h2>{title}</h2>
       <p>{detail}</p>
       <p className="ue-card-meta">

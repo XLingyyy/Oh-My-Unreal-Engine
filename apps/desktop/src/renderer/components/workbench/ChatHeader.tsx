@@ -10,6 +10,7 @@ interface ChatHeaderProps {
   onNewSession: () => void;
   onResumeInterrupted: () => void;
   hasInterrupted: boolean;
+  isDraftSession?: boolean;
 }
 
 function sessionDisplay(session: RepairSessionRecord, t: {
@@ -37,12 +38,19 @@ export function ChatHeader({
   onNewSession,
   onResumeInterrupted,
   hasInterrupted,
+  isDraftSession = false,
 }: ChatHeaderProps) {
   const { copy } = useDesktopCopy();
   const t = copy.ueAgentUi.chatHeader;
   const [open, setOpen] = useState(false);
 
   const selectedSession = sessions.find(s => s.sessionId === selectedSessionId);
+
+  const selectorLabel = isDraftSession
+    ? t.draftSessionLabel
+    : selectedSession
+      ? sessionDisplay(selectedSession, t)
+      : t.sessionListPlaceholder;
 
   return (
     <div className="ue-chat-header">
@@ -57,7 +65,7 @@ export function ChatHeader({
       >
         {t.newSession} <span aria-hidden="true">+</span>
       </button>
-      {sessions.length > 0 && (
+      {sessions.length > 0 ? (
         <button
           type="button"
           className="ue-button ue-button-secondary ue-chat-header-select"
@@ -65,11 +73,13 @@ export function ChatHeader({
           aria-expanded={open}
           onClick={() => setOpen(prev => !prev)}
         >
-          {selectedSession
-            ? sessionDisplay(selectedSession, t)
-            : t.sessionListPlaceholder}
+          {selectorLabel}
         </button>
-      )}
+      ) : isDraftSession ? (
+        <span className="ue-chat-header-draft-label" data-session-mode="draft">
+          {t.draftSessionLabel}
+        </span>
+      ) : null}
       {open && sessions.length > 0 && (
         <ul className="ue-chat-header-list" role="listbox">
           {sessions.map(session => (

@@ -443,6 +443,7 @@ export interface UeAgentUiCopy {
     sessionAssetLabel: string;
     sessionProjectLabel: string;
     sessionScopeLabel: (scope: 'asset' | 'project') => string;
+    draftSessionLabel: string;
   };
   chatInput: {
     placeholder: string;
@@ -465,6 +466,8 @@ export interface UeAgentUiCopy {
     switchToAsset: string;
     modeProject: string;
     modeAsset: string;
+    draftTitle: string;
+    draftDetail: string;
   };
   rightInspector: {
     regionLabel: string;
