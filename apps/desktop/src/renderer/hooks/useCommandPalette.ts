@@ -1,29 +1,50 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  findFirstEnabledCommandIndex,
+  findNextEnabledCommandIndex,
+  normalizeEnabledCommandIndex,
+} from './commandPaletteNavigation';
 
 export interface CommandPaletteCommand {
   id: string;
   label: string;
   group: string;
+  keywords?: string[];
   disabled?: boolean;
+  disabledReason?: string;
   run: () => void;
 }
 
 export function useCommandPalette(commands: CommandPaletteCommand[]) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const filteredCommands = useMemo(() => {
+    for (const command of commands) {
+      if (command.disabled && !command.disabledReason?.trim()) {
+        throw new Error(`Disabled command "${command.id}" requires a disabled reason.`);
+      }
+    }
     const q = query.trim().toLowerCase();
     if (!q) return commands;
     return commands.filter(command =>
-      `${command.group} ${command.label}`.toLowerCase().includes(q),
+      `${command.group} ${command.label} ${(command.keywords ?? []).join(' ')}`
+        .toLowerCase()
+        .includes(q),
     );
   }, [commands, query]);
 
   useEffect(() => {
-    setSelectedIndex(0);
+    if (!isOpen) return;
+    setSelectedIndex(findFirstEnabledCommandIndex(filteredCommands));
   }, [query, isOpen]);
+
+  useEffect(() => {
+    setSelectedIndex(current =>
+      normalizeEnabledCommandIndex(filteredCommands, current),
+    );
+  }, [filteredCommands]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => {
@@ -46,17 +67,15 @@ export function useCommandPalette(commands: CommandPaletteCommand[]) {
 
   const selectNext = useCallback(() => {
     setSelectedIndex(current =>
-      filteredCommands.length === 0 ? 0 : (current + 1) % filteredCommands.length,
+      findNextEnabledCommandIndex(filteredCommands, current, 1),
     );
-  }, [filteredCommands.length]);
+  }, [filteredCommands]);
 
   const selectPrevious = useCallback(() => {
     setSelectedIndex(current =>
-      filteredCommands.length === 0
-        ? 0
-        : (current - 1 + filteredCommands.length) % filteredCommands.length,
+      findNextEnabledCommandIndex(filteredCommands, current, -1),
     );
-  }, [filteredCommands.length]);
+  }, [filteredCommands]);
 
   const runSelected = useCallback(() => {
     const selected = filteredCommands[selectedIndex];

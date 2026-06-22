@@ -117,6 +117,45 @@ export interface UeAgentUiCopy {
     explorerTitle: string;
     explorerLabel: string;
   };
+  commandPalette: {
+    dialogLabel: string;
+    searchPlaceholder: string;
+    empty: string;
+    groups: {
+      session: string;
+      drawer: string;
+      settings: string;
+    };
+    commands: {
+      newSession: string;
+      resumeInterrupted: string;
+      refreshContext: string;
+      openDrawer: (itemLabel: string) => string;
+      openSettings: string;
+      focusChatInput: string;
+    };
+    disabledReasons: {
+      resumeUnavailable: string;
+      refreshInProgress: string;
+      contextRequired: string;
+      chatViewRequired: string;
+    };
+  };
+  drawer: {
+    dialogLabel: string;
+    items: {
+      'session-notes': string;
+      queue: string;
+      questions: string;
+      handoff: string;
+      closure: string;
+      'change-plan': string;
+      'bp-change-workspace': string;
+    };
+    closeAria: string;
+    noContextTitle: string;
+    noContextDetail: string;
+  };
   settingsPlaceholder: {
     title: string;
     body: string;

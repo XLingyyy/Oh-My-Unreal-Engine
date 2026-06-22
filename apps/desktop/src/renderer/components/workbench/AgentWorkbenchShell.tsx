@@ -3,8 +3,11 @@ import type { BridgeClient } from '../../services';
 import {
   useAgentWorkbenchState,
   isInterruptedState,
-  type DrawerItem,
 } from '../../hooks/useAgentWorkbenchState';
+import {
+  DRAWER_ITEM_IDS,
+  type DrawerItem,
+} from '../../hooks/drawerNavigation';
 import { useTheme } from '../../hooks/useTheme';
 import { useCommandPalette, type CommandPaletteCommand } from '../../hooks/useCommandPalette';
 import { DrawerPanel } from './DrawerPanel';
@@ -39,16 +42,6 @@ interface AgentWorkbenchShellProps {
 function focusChatInput(): void {
   document.querySelector<HTMLInputElement>('[data-workbench-chat-input]')?.focus();
 }
-
-const DRAWER_COMMANDS: Array<[DrawerItem, string]> = [
-  ['session-notes', 'Open drawer: Session Notes'],
-  ['queue', 'Open drawer: Queue'],
-  ['questions', 'Open drawer: Questions'],
-  ['handoff', 'Open drawer: Handoff'],
-  ['closure', 'Open drawer: Closure'],
-  ['change-plan', 'Open drawer: Change Plan'],
-  ['bp-change-workspace', 'Open drawer: BP Change WS'],
-];
 
 export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShellProps) {
   const { theme, setTheme } = useTheme();
@@ -85,43 +78,91 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   }, []);
 
   const commands = useMemo<CommandPaletteCommand[]>(() => {
+    const commandCopy = copy.ueAgentUi.commandPalette;
+    const drawerLabels = copy.ueAgentUi.drawer.items;
     const list: CommandPaletteCommand[] = [
-      { id: 'new-session', label: 'New repair session', group: 'Session', run: focusChatInput },
+      {
+        id: 'new-session',
+        label: commandCopy.commands.newSession,
+        group: commandCopy.groups.session,
+        keywords: ['new', 'session', 'draft'],
+        run: () => {
+          setActiveView('chat');
+          state.agent.handleNewSession();
+        },
+      },
       {
         id: 'resume-interrupted',
-        label: 'Resume interrupted session',
-        group: 'Session',
+        label: commandCopy.commands.resumeInterrupted,
+        group: commandCopy.groups.session,
+        keywords: ['resume', 'interrupted', 'session'],
         disabled: !interruptedSessionId,
+        disabledReason: !interruptedSessionId
+          ? commandCopy.disabledReasons.resumeUnavailable
+          : undefined,
         run: () => { if (interruptedSessionId) void state.agent.resumeSession(interruptedSessionId); },
       },
       {
         id: 'refresh-context',
-        label: 'Refresh context',
-        group: 'Session',
+        label: commandCopy.commands.refreshContext,
+        group: commandCopy.groups.session,
+        keywords: ['refresh', 'context', 'snapshot'],
+        disabled: state.bridge.isRefreshing,
+        disabledReason: state.bridge.isRefreshing
+          ? commandCopy.disabledReasons.refreshInProgress
+          : undefined,
         run: state.bridge.refreshContext,
       },
     ];
 
-    for (const [item, label] of DRAWER_COMMANDS) {
+    for (const item of DRAWER_ITEM_IDS) {
+      const drawerLabel = drawerLabels[item];
       list.push({
         id: `drawer-${item}`,
-        label,
-        group: 'Drawer',
+        label: commandCopy.commands.openDrawer(drawerLabel),
+        group: commandCopy.groups.drawer,
+        keywords: ['drawer', item, drawerLabel],
+        disabled: !state.bridge.snapshot,
+        disabledReason: !state.bridge.snapshot
+          ? commandCopy.disabledReasons.contextRequired
+          : undefined,
         run: () => state.drawer.openDrawer(item),
       });
     }
 
     list.push(
-      { id: 'open-settings', label: 'Open settings', group: 'Settings', run: () => openSettings() },
-      { id: 'focus-chat-input', label: 'Focus chat input', group: 'Session', run: focusChatInput },
+      {
+        id: 'open-settings',
+        label: commandCopy.commands.openSettings,
+        group: commandCopy.groups.settings,
+        keywords: ['open', 'settings'],
+        run: () => openSettings(),
+      },
+      {
+        id: 'focus-chat-input',
+        label: commandCopy.commands.focusChatInput,
+        group: commandCopy.groups.session,
+        keywords: ['focus', 'chat', 'input'],
+        disabled: activeView !== 'chat',
+        disabledReason: activeView !== 'chat'
+          ? commandCopy.disabledReasons.chatViewRequired
+          : undefined,
+        run: focusChatInput,
+      },
     );
 
     return list;
   }, [
     interruptedSessionId,
-    state.agent,
+    activeView,
+    copy.ueAgentUi.commandPalette,
+    copy.ueAgentUi.drawer.items,
+    state.agent.handleNewSession,
+    state.agent.resumeSession,
+    state.bridge.isRefreshing,
     state.bridge.refreshContext,
-    state.drawer,
+    state.bridge.snapshot,
+    state.drawer.openDrawer,
     openSettings,
   ]);
 
@@ -130,6 +171,7 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (palette.isOpen) return;
         if (responsive.inspectorDrawerOpen) {
           responsive.setInspectorDrawerOpen(false);
           return;
@@ -140,7 +182,7 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [responsive, state.drawer]);
+  }, [palette.isOpen, responsive, state.drawer]);
 
   useEffect(() => {
     if (settingsLoading || appearanceUpdatePending) return;
@@ -337,6 +379,7 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   return (
     <div
       className="workbench-root"
+      tabIndex={-1}
       data-theme={appearancePreview.theme}
       data-accent={normalizeAppearanceAccent(appearancePreview.accentColor)}
       data-density={appearancePreview.density}
@@ -430,9 +473,16 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
         </button>
       )}
 
-      <DrawerPanel state={state} client={client} />
+      <DrawerPanel
+        state={state}
+        client={client}
+        isCommandPaletteOpen={palette.isOpen}
+      />
       <CommandPalette
         isOpen={palette.isOpen}
+        dialogLabel={copy.ueAgentUi.commandPalette.dialogLabel}
+        searchPlaceholder={copy.ueAgentUi.commandPalette.searchPlaceholder}
+        emptyLabel={copy.ueAgentUi.commandPalette.empty}
         query={palette.query}
         setQuery={palette.setQuery}
         commands={palette.filteredCommands}

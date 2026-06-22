@@ -57,15 +57,7 @@ import {
 } from '../components/workbench/workbenchStatusViewModel';
 import { DEFAULT_BRIDGE_BASE_URL } from '../services/http-bridge-client.contract';
 import type { ProviderReadiness } from '../../main/settings/provider-authority';
-
-export type DrawerItem =
-  | 'session-notes'
-  | 'queue'
-  | 'questions'
-  | 'handoff'
-  | 'closure'
-  | 'change-plan'
-  | 'bp-change-workspace';
+import type { DrawerItem } from './drawerNavigation';
 
 export type DiffPreview = {
   mode: 'real';
