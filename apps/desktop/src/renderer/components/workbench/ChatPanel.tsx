@@ -16,6 +16,7 @@ import {
   type MapperEvent,
 } from './agentCardMapper';
 import type { SendRequest } from './targetScopeState';
+import type { AgentCardPresentationSettings } from './AgentCardFrame';
 
 type AgentWorkbenchState = ReturnType<typeof useAgentWorkbenchState>;
 
@@ -27,6 +28,7 @@ interface ChatPanelProps {
   diagnosisModel?: string;
   onOpenSettings?: () => void;
   onBeforeStartSession?: () => Promise<unknown>;
+  presentation: AgentCardPresentationSettings;
 }
 
 export function ChatPanel({
@@ -35,6 +37,7 @@ export function ChatPanel({
   diagnosisModel,
   onOpenSettings,
   onBeforeStartSession,
+  presentation,
 }: ChatPanelProps) {
   const { copy } = useDesktopCopy();
   const snapshot = state.bridge.snapshot;
@@ -386,6 +389,7 @@ export function ChatPanel({
                     actionTargets,
                   }}
                   onAction={handleAction}
+                  presentation={presentation}
                   failureRecovery={
                     card.kind === 'failure'
                     && card.id === latestFailureCardId

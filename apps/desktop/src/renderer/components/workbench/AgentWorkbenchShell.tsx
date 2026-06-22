@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { BridgeClient } from '../../services';
 import {
   useAgentWorkbenchState,
@@ -15,13 +15,21 @@ import { ProjectExplorer } from './ProjectExplorer';
 import { ChatPanel } from './ChatPanel';
 import { RightInspector } from './RightInspector';
 import { SettingsPage } from './SettingsPage';
-import { isThemeName, type ThemeName } from '../../theme/themes';
 import { THEME_ORDER, THEME_LABELS } from '../../theme/themes';
 import { useSettings } from '../../hooks/useSettings';
 import { useWorkbenchResponsiveState } from './useWorkbenchResponsiveState';
 import { useDesktopCopy } from '../../i18n';
-import type { LanguageSettings, SettingsCategoryId } from './settings/settingsTypes';
+import type {
+  AppearanceSettings,
+  LanguageSettings,
+  SettingsCategoryId,
+} from './settings/settingsTypes';
 import { persistUiLanguageChange, type UiLanguage } from './languagePreferenceState';
+import {
+  normalizeAppearanceAccent,
+  persistAppearanceChange,
+  type AppearancePatch,
+} from './appearancePreferenceState';
 
 interface AgentWorkbenchShellProps {
   client: BridgeClient;
@@ -42,18 +50,27 @@ const DRAWER_COMMANDS: Array<[DrawerItem, string]> = [
   ['bp-change-workspace', 'Open drawer: BP Change WS'],
 ];
 
-const THEME_STORAGE_KEY = 'omue.ui.theme';
-
 export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShellProps) {
   const { theme, setTheme } = useTheme();
   const { copy, lang, setLang } = useDesktopCopy();
-  const { settings, providerReadiness, safeStorageAvailable, loading: settingsLoading, error: settingsError, updateSettings, updateCategory, resetSettings, refreshSettings, applyPersistedTheme } = useSettings();
+  const {
+    settings,
+    providerReadiness,
+    safeStorageAvailable,
+    loading: settingsLoading,
+    error: settingsError,
+    updateCategory,
+    resetSettings,
+    refreshSettings,
+  } = useSettings();
   const state = useAgentWorkbenchState(client, isMockClient, providerReadiness);
   const [activeView, setActiveView] = useState<'chat' | 'settings'>('chat');
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategoryId>('general');
   const [languageUpdatePending, setLanguageUpdatePending] = useState(false);
+  const [appearancePreview, setAppearancePreview] =
+    useState<AppearanceSettings>(settings.appearance);
+  const [appearanceUpdatePending, setAppearanceUpdatePending] = useState(false);
   const responsive = useWorkbenchResponsiveState();
-  const prevThemeRef = useRef<ThemeName>(theme);
   const selectedSession = state.agent.selectedSession;
   const interruptedSessionId =
     isInterruptedState(selectedSession?.currentState ?? 'draft')
@@ -126,54 +143,18 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   }, [responsive, state.drawer]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    try {
-      const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-      if (storedTheme && isThemeName(storedTheme)) {
-        if (storedTheme !== theme) {
-          setTheme(storedTheme);
-        }
-        return undefined;
-      }
-
-      void window.omue.getInitialTheme()
-        .then(initialTheme => {
-          if (cancelled) {
-            return;
-          }
-
-          const preferredTheme = initialTheme === 'light' ? 'light' : 'ue-agent';
-          if (preferredTheme !== theme) {
-            setTheme(preferredTheme);
-          }
-        })
-        .catch(() => {
-          if (!cancelled && theme !== 'ue-agent') {
-            setTheme('ue-agent');
-          }
-        });
-    } catch {
-      if (theme !== 'ue-agent') {
-        setTheme('ue-agent');
-      }
+    if (settingsLoading || appearanceUpdatePending) return;
+    setAppearancePreview(settings.appearance);
+    if (settings.appearance.theme !== theme) {
+      setTheme(settings.appearance.theme);
     }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [setTheme, theme]);
-
-  useEffect(() => {
-    if (settingsLoading) return;
-
-    applyPersistedTheme(persistedTheme => {
-      prevThemeRef.current = theme;
-      if (persistedTheme !== theme) {
-        setTheme(persistedTheme);
-      }
-    });
-  }, [settingsLoading, applyPersistedTheme, theme, setTheme]);
+  }, [
+    settingsLoading,
+    appearanceUpdatePending,
+    settings.appearance,
+    theme,
+    setTheme,
+  ]);
 
   useEffect(() => {
     if (settingsLoading || languageUpdatePending) return;
@@ -189,15 +170,40 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
     setLang,
   ]);
 
-  const handleSetTheme = useCallback(async (next: string) => {
-    const nextTheme = next as ThemeName;
-    prevThemeRef.current = theme;
-    setTheme(nextTheme);
-    const result = await updateCategory('appearance', { theme: nextTheme });
-    if (!result.ok) {
-      setTheme(prevThemeRef.current);
+  const handleUpdateAppearance = useCallback(async (
+    patch: AppearancePatch,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (appearanceUpdatePending) {
+      return { ok: false, error: 'Appearance update already in progress' };
     }
-  }, [theme, setTheme, updateCategory]);
+
+    const current = appearancePreview;
+    setAppearanceUpdatePending(true);
+    try {
+      return await persistAppearanceChange({
+        current,
+        patch,
+        apply: next => {
+          setAppearancePreview(next);
+          setTheme(next.theme);
+        },
+        persist: async nextPatch => {
+          const result = await updateCategory('appearance', nextPatch);
+          return {
+            ok: result.ok,
+            ...(result.error ? { error: result.error } : {}),
+          };
+        },
+      });
+    } finally {
+      setAppearanceUpdatePending(false);
+    }
+  }, [
+    appearancePreview,
+    appearanceUpdatePending,
+    setTheme,
+    updateCategory,
+  ]);
 
   const handleUpdateLanguage = useCallback(async (patch: Partial<LanguageSettings>): Promise<{ ok: boolean; error?: string }> => {
     if (patch.uiLanguage === undefined) {
@@ -238,9 +244,11 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   }, [refreshSettings]);
 
   const snapshot = state.bridge.snapshot;
+  const explorerEnabled = appearancePreview.layouts.showProjectExplorer;
+  const inspectorEnabled = appearancePreview.layouts.showRightInspector;
   const explorerVisibleInline =
     responsive.layout === 'full' || responsive.layout === 'narrow';
-  const showExplorerOverlay = explorerIsOverlay;
+  const showExplorerOverlay = explorerIsOverlay && explorerEnabled;
 
   const renderProjectExplorer = () => {
     if (showExplorerOverlay) {
@@ -281,7 +289,7 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
 
   const renderRightInspector = () => {
     if (inspectorUsesDrawer) {
-      if (!responsive.inspectorDrawerOpen) {
+      if (!inspectorEnabled || !responsive.inspectorDrawerOpen) {
         return null;
       }
       return (
@@ -320,14 +328,28 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   };
 
   const topBarExplorerProps =
-    responsive.layout === 'compact'
+    responsive.layout === 'compact' && explorerEnabled
       ? {
           onToggleExplorer: () => responsive.toggleProjectExplorer(),
           explorerVisible: !responsive.projectExplorerCollapsed,
         }
       : {};
   return (
-    <div className="workbench-root" data-theme={theme}>
+    <div
+      className="workbench-root"
+      data-theme={appearancePreview.theme}
+      data-accent={normalizeAppearanceAccent(appearancePreview.accentColor)}
+      data-density={appearancePreview.density}
+      data-font-size={appearancePreview.fontSize}
+      data-show-left-rail={String(appearancePreview.layouts.showLeftRail)}
+      data-show-project-explorer={String(appearancePreview.layouts.showProjectExplorer)}
+      data-show-right-inspector={String(appearancePreview.layouts.showRightInspector)}
+      data-show-timestamps={String(appearancePreview.chatDisplay.showTimestamps)}
+      data-show-avatars={String(appearancePreview.chatDisplay.showAvatars)}
+      data-syntax-highlight={String(appearancePreview.chatDisplay.codeSyntaxHighlight)}
+      data-collapse-long={String(appearancePreview.chatDisplay.collapseLongMessages)}
+      data-show-actions={String(appearancePreview.chatDisplay.showActionButtons)}
+    >
       <TopBar
         onOpenSettings={() => openSettings()}
         projectName={snapshot?.project.projectName ?? 'MyProject'}
@@ -361,22 +383,28 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
               diagnosisModel={providerReadiness.diagnosisModel}
               onOpenSettings={() => openSettings('modelProviders')}
               onBeforeStartSession={refreshSettings}
+              presentation={{
+                ...appearancePreview.chatDisplay,
+                language: lang,
+                timeFormat: settings.language.timeFormat,
+              }}
             />
             {renderRightInspector()}
           </>
         ) : (
           <SettingsPage
-            settings={settings}
+            settings={{ ...settings, appearance: appearancePreview }}
             initialCategory={settingsCategory}
             onUpdateCategory={updateCategory}
             onUpdateLanguage={handleUpdateLanguage}
             uiLanguageUpdating={languageUpdatePending}
+            onUpdateAppearance={handleUpdateAppearance}
+            appearanceUpdating={appearanceUpdatePending}
             onResetSettings={handleResetSettings}
             onRefreshSettings={refreshSettings}
             onBack={handleBackToChat}
             themeNames={THEME_ORDER}
             themeLabels={THEME_LABELS}
-            onSetTheme={handleSetTheme}
             safeStorageAvailable={safeStorageAvailable}
             loading={settingsLoading}
             error={settingsError}
@@ -386,7 +414,7 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
         )}
       </div>
 
-      {inspectorUsesDrawer && (
+      {inspectorUsesDrawer && inspectorEnabled && (
         <button
           type="button"
           className="wb-inspector-floating-toggle"

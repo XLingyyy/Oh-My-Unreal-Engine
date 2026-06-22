@@ -13,6 +13,7 @@ import { PrivacyLogSettings } from './PrivacyLogSettings';
 import { AdvancedSettings } from './AdvancedSettings';
 import type { UeConnectionView } from './workbenchStatusViewModel';
 import type { ProviderReadiness } from '../../../main/settings/provider-authority';
+import type { AppearancePatch } from './appearancePreferenceState';
 
 interface SettingsPageProps {
   settings: SettingsState;
@@ -22,12 +23,15 @@ interface SettingsPageProps {
     patch: Partial<import('./settings/settingsTypes').LanguageSettings>,
   ) => Promise<{ ok: boolean; error?: string }> | void;
   uiLanguageUpdating?: boolean;
+  onUpdateAppearance?: (
+    patch: AppearancePatch,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  appearanceUpdating?: boolean;
   onResetSettings: () => void | Promise<{ ok: boolean; error?: string }>;
   onRefreshSettings: () => Promise<{ ok: boolean; error?: string }>;
   onBack: () => void;
   themeNames: string[];
   themeLabels: Record<string, string>;
-  onSetTheme: (theme: string) => void;
   safeStorageAvailable: boolean;
   loading: boolean;
   error: string | null;
@@ -53,12 +57,13 @@ export function SettingsPage({
   onUpdateCategory,
   onUpdateLanguage,
   uiLanguageUpdating,
+  onUpdateAppearance,
+  appearanceUpdating,
   onResetSettings,
   onRefreshSettings,
   onBack,
   themeNames,
   themeLabels,
-  onSetTheme,
   safeStorageAvailable,
   loading,
   error,
@@ -117,10 +122,10 @@ export function SettingsPage({
         return (
           <AppearanceSettings
             settings={settings.appearance}
-            onUpdate={patch => onUpdateCategory('appearance', patch)}
+            onUpdate={patch => onUpdateAppearance?.(patch)}
+            updating={appearanceUpdating}
             themeNames={themeNames}
             themeLabels={themeLabels}
-            onSetTheme={onSetTheme}
           />
         );
       case 'language':

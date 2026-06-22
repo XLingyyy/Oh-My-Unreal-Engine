@@ -10,6 +10,10 @@ import { ProjectCandidatesCard } from './cards/ProjectCandidatesCard';
 import { UserIntentCard } from './cards/UserIntentCard';
 import type { FailureRecoveryAction } from './cards/FailureCard';
 import {
+  AgentCardFrame,
+  type AgentCardPresentationSettings,
+} from './AgentCardFrame';
+import {
   createAgentCardActionHandler,
   isAgentCardActionEnabled,
   type AgentCardActionContext,
@@ -22,6 +26,7 @@ export interface AgentCardRendererProps {
   loadingActionId?: AgentCardActionId | null;
   disabled?: boolean;
   failureRecovery?: FailureRecoveryAction;
+  presentation: AgentCardPresentationSettings;
 }
 
 export function AgentCardRenderer({
@@ -31,6 +36,7 @@ export function AgentCardRenderer({
   loadingActionId = null,
   disabled = false,
   failureRecovery,
+  presentation,
 }: AgentCardRendererProps) {
   const policyContext: AgentCardActionContext = {
     ...actionContext,
@@ -40,29 +46,34 @@ export function AgentCardRenderer({
   const guardedOnAction = createAgentCardActionHandler(policyContext, onAction);
   const isActionEnabled = (actionId: AgentCardActionId) =>
     isAgentCardActionEnabled(policyContext, actionId);
+  let cardContent;
   switch (card.kind) {
     case 'user-intent':
-      return <UserIntentCard card={card} />;
+      cardContent = <UserIntentCard card={card} />;
+      break;
     case 'scan-status':
-      return <ScanStatusCard card={card} onAction={guardedOnAction} />;
+      cardContent = <ScanStatusCard card={card} onAction={guardedOnAction} />;
+      break;
     case 'diagnosis':
-      return (
+      cardContent = (
         <DiagnosisCard
           card={card}
           onAction={guardedOnAction}
           isActionEnabled={isActionEnabled}
         />
       );
+      break;
     case 'fix-plan':
-      return (
+      cardContent = (
         <FixPlanCard
           card={card}
           onAction={guardedOnAction}
           isActionEnabled={isActionEnabled}
         />
       );
+      break;
     case 'change-preview':
-      return (
+      cardContent = (
         <ChangePreviewCard
           card={card}
           onAction={guardedOnAction}
@@ -71,8 +82,9 @@ export function AgentCardRenderer({
           isActionEnabled={isActionEnabled}
         />
       );
+      break;
     case 'validation-result':
-      return (
+      cardContent = (
         <ValidationResultCard
           card={card}
           onAction={guardedOnAction}
@@ -81,8 +93,9 @@ export function AgentCardRenderer({
           isActionEnabled={isActionEnabled}
         />
       );
+      break;
     case 'project-candidates':
-      return (
+      cardContent = (
         <ProjectCandidatesCard
           card={card}
           onAction={guardedOnAction}
@@ -90,13 +103,34 @@ export function AgentCardRenderer({
           isActionEnabled={isActionEnabled}
         />
       );
+      break;
     case 'failure':
-      return <FailureCard card={card} recoveryAction={failureRecovery} />;
+      cardContent = <FailureCard card={card} recoveryAction={failureRecovery} />;
+      break;
     case 'completion':
-      return <CompletionCard card={card} />;
+      cardContent = <CompletionCard card={card} />;
+      break;
     default: {
       const exhaustive: never = card;
       throw new Error(`Unknown AgentCard kind: ${JSON.stringify(exhaustive)}`);
     }
   }
+
+  const hasCriticalActions = card.kind === 'change-preview'
+    || card.kind === 'validation-result'
+    || (
+      card.kind === 'failure'
+      && failureRecovery !== undefined
+      && failureRecovery.mode !== 'none'
+    );
+
+  return (
+    <AgentCardFrame
+      card={card}
+      presentation={presentation}
+      hasCriticalActions={hasCriticalActions}
+    >
+      {cardContent}
+    </AgentCardFrame>
+  );
 }

@@ -33,6 +33,8 @@
     "src/renderer/components/workbench/workbenchStatusViewModel.ts",
     "src/renderer/components/workbench/inspectorDataAdapter.ts",
     "src/renderer/components/workbench/languagePreferenceState.ts",
+    "src/renderer/components/workbench/appearancePreferenceState.ts",
+    "src/renderer/components/workbench/agentCardPresentation.ts",
     "src/main/settings/provider-authority.ts"
   ]
 }
