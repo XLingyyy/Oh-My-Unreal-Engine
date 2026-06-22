@@ -326,12 +326,19 @@
   display: flex;
   flex-direction: column;
   padding: 12px 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .ue-explorer-header {
-  padding: 8px 16px;
+  padding: 8px 16px 10px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.ue-explorer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .ue-explorer-title {
@@ -340,8 +347,22 @@
   color: var(--text-primary);
 }
 
-.ue-explorer-search {
+.ue-explorer-scope-note {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ue-explorer-toolbar {
   padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 6px;
+}
+
+.ue-explorer-search {
+  position: relative;
 }
 
 .ue-explorer-search-input {
@@ -350,28 +371,107 @@
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  padding: 6px 12px;
+  padding: 6px 30px 6px 10px;
   border-radius: 6px;
   font-size: 12px;
 }
 
-.ue-explorer-search-input:disabled {
-  opacity: 0.6;
+.ue-explorer-search-input:focus-visible,
+.ue-explorer-refresh:focus-visible,
+.ue-explorer-search-clear:focus-visible,
+.ue-tree-empty-action:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.ue-explorer-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ue-explorer-search-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.ue-explorer-refresh,
+.ue-tree-empty-action {
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ue-explorer-refresh {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.ue-explorer-refresh:hover:not(:disabled),
+.ue-tree-empty-action:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-primary) 45%, var(--border-default));
+  background: var(--bg-card-hover);
+}
+
+.ue-explorer-refresh:disabled,
+.ue-tree-empty-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ue-explorer-result-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ue-explorer-refresh-error {
+  margin: 8px 16px 0;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, var(--border-subtle));
+  border-radius: 7px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, var(--bg-card));
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .ue-explorer-tree {
   flex: 1;
   padding: 8px 0;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .ue-tree-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 16px 4px 8px;
+  min-height: 30px;
+  padding: 4px 10px 4px 8px;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: default;
+  border-left: 2px solid transparent;
 }
 
 .ue-tree-row:hover {
@@ -379,14 +479,64 @@
   color: var(--text-primary);
 }
 
+.ue-tree-row:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+  background: var(--bg-card-soft);
+  color: var(--text-primary);
+}
+
 .ue-tree-row-selected {
   background: var(--bg-card);
   color: var(--text-primary);
-  border-left: 2px solid var(--accent-blue);
+  border-left-color: var(--accent-primary);
 }
 
 .ue-tree-row-warning .ue-tree-name {
   color: var(--warning);
+}
+
+.ue-tree-badges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: 58%;
+}
+
+.ue-tree-badge {
+  padding: 1px 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.ue-tree-badge-current {
+  color: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent-cyan) 28%, transparent);
+}
+
+.ue-tree-badge-open {
+  color: var(--text-secondary);
+  background: var(--bg-card-soft);
+  border-color: var(--border-subtle);
+}
+
+.ue-tree-badge-target {
+  color: var(--text-on-accent);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.ue-tree-badge-manual {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
 }
 
 .ue-tree-warning-dot {
@@ -394,7 +544,6 @@
   height: 6px;
   background: var(--warning);
   border-radius: 999px;
-  margin-left: auto;
   flex: 0 0 6px;
 }
 
@@ -475,10 +624,32 @@
 }
 
 .ue-tree-empty {
-  padding: 16px;
+  min-height: 150px;
+  padding: 20px 16px;
   text-align: center;
   color: var(--text-muted);
   font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.ue-tree-empty-title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ue-tree-empty-body {
+  max-width: 220px;
+  line-height: 1.45;
+}
+
+.ue-tree-empty-action {
+  margin-top: 3px;
+  padding: 5px 9px;
+  font-size: 11px;
 }
 
 .ue-tree-name {

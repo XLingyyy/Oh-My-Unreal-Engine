@@ -1,94 +1,19 @@
-import { useMemo, useState, type KeyboardEvent } from 'react';
-import { useDesktopCopy } from '../../i18n';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import type { AssetContext } from '@omue/shared-protocol';
-
-type AssetKind = 'Blueprint' | 'Material' | 'Map' | 'Config' | 'Cpp' | 'Folder' | 'Other';
-
-type SearchMatch = 'direct' | 'ancestor' | 'none';
-
-interface SearchResult {
-  matches: Map<string, SearchMatch>;
-  visibleIds: Set<string>;
-}
-
-interface AssetNode {
-  id: string;
-  name: string;
-  path: string;
-  kind: AssetKind;
-  isCurrent: boolean;
-  isOpen: boolean;
-  isDirty: boolean;
-}
-
-const EXPANDABLE_KINDS: ReadonlySet<AssetKind> = new Set<AssetKind>(['Folder']);
-
-function classifyAsset(asset: AssetContext): AssetKind {
-  const cls = asset.assetClass.toLowerCase();
-  if (cls.includes('blueprint')) return 'Blueprint';
-  if (cls.includes('material')) return 'Material';
-  if (cls.includes('map') || cls.includes('world')) return 'Map';
-  if (cls.includes('config') || cls.includes('ini')) return 'Config';
-  if (cls.includes('cpp') || cls.includes('code')) return 'Cpp';
-  if (cls.includes('folder')) return 'Folder';
-  return 'Other';
-}
-
-function buildAssetList(currentAsset: AssetContext | undefined, openAssets: AssetContext[]): AssetNode[] {
-  const seen = new Set<string>();
-  const nodes: AssetNode[] = [];
-
-  if (currentAsset) {
-    const key = currentAsset.assetPath;
-    if (!seen.has(key)) {
-      seen.add(key);
-      nodes.push({
-        id: key,
-        name: currentAsset.assetName,
-        path: currentAsset.assetPath,
-        kind: classifyAsset(currentAsset),
-        isCurrent: true,
-        isOpen: currentAsset.isOpenInEditor,
-        isDirty: currentAsset.isDirty,
-      });
-    }
-  }
-
-  for (const asset of openAssets) {
-    const key = asset.assetPath;
-    if (seen.has(key)) {
-      const existing = nodes.find(n => n.id === key);
-      if (existing) {
-        existing.isOpen = existing.isOpen || asset.isOpenInEditor;
-      }
-      continue;
-    }
-    seen.add(key);
-    nodes.push({
-      id: key,
-      name: asset.assetName,
-      path: asset.assetPath,
-      kind: classifyAsset(asset),
-      isCurrent: false,
-      isOpen: asset.isOpenInEditor,
-      isDirty: asset.isDirty,
-    });
-  }
-
-  return nodes;
-}
-
-function normalize(value: string): string {
-  return value.toLowerCase();
-}
-
-function matchesQuery(node: AssetNode, query: string): boolean {
-  const q = normalize(query);
-  if (!q) return true;
-  const name = normalize(node.name);
-  const path = normalize(node.path);
-  return name === q || name.startsWith(q) || path.includes(q);
-}
+import { useDesktopCopy } from '../../i18n';
+import {
+  buildExplorerAssetNodes,
+  filterExplorerAssetNodes,
+  findNextExplorerAssetIndex,
+  resolveExplorerRovingPath,
+  type ExplorerAssetKind,
+  type ExplorerAssetNode,
+} from './projectExplorerModel';
 
 function BlueprintIcon() {
   return (
@@ -247,12 +172,7 @@ function SearchEmptyIcon() {
 function EmptyAssetsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true" focusable="false">
-      <path
-        d="M4 7h16v12H4z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-      />
+      <path d="M4 7h16v12H4z" fill="none" stroke="currentColor" strokeWidth="1.4" />
       <path
         d="M4 7l4-3h8l4 3"
         fill="none"
@@ -271,7 +191,7 @@ function EmptyAssetsIcon() {
   );
 }
 
-function renderKindIcon(kind: AssetKind) {
+function renderKindIcon(kind: ExplorerAssetKind) {
   switch (kind) {
     case 'Blueprint':
       return <BlueprintIcon />;
@@ -294,168 +214,302 @@ function renderKindIcon(kind: AssetKind) {
 export interface ProjectExplorerProps {
   currentAsset?: AssetContext;
   openAssets: AssetContext[];
-  selectedAssetPath?: string;
+  targetAssetPath?: string;
+  manualTargetAssetPath?: string;
+  isRefreshing: boolean;
+  refreshError: string | null;
+  onRefresh: () => void;
   onSelectAsset?: (assetPath: string) => void;
 }
 
-export function ProjectExplorer({ currentAsset, openAssets, selectedAssetPath, onSelectAsset }: ProjectExplorerProps) {
+export function ProjectExplorer({
+  currentAsset,
+  openAssets,
+  targetAssetPath,
+  manualTargetAssetPath,
+  isRefreshing,
+  refreshError,
+  onRefresh,
+  onSelectAsset,
+}: ProjectExplorerProps) {
   const { copy } = useDesktopCopy();
   const [query, setQuery] = useState('');
+  const [rovingPath, setRovingPath] = useState<string | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
-  const trimmedQuery = query.trim();
-  const isSearching = trimmedQuery.length > 0;
-
-  const assetList = useMemo(
-    () => buildAssetList(currentAsset, openAssets),
+  const assetNodes = useMemo(
+    () => buildExplorerAssetNodes(currentAsset, openAssets),
     [currentAsset, openAssets],
   );
+  const visibleNodes = useMemo(
+    () => filterExplorerAssetNodes(assetNodes, query),
+    [assetNodes, query],
+  );
+  const resolvedRovingPath = resolveExplorerRovingPath(visibleNodes, [
+    rovingPath ?? undefined,
+    targetAssetPath,
+    currentAsset?.assetPath,
+  ]);
+  const trimmedQuery = query.trim();
 
-  const hasAssets = assetList.length > 0;
+  const clearSearch = () => {
+    setQuery('');
+    searchInputRef.current?.focus();
+  };
 
-  const searchResult = useMemo<SearchResult | null>(() => {
-    if (!isSearching) return null;
-    const directIds = new Set<string>();
-    for (const node of assetList) {
-      if (matchesQuery(node, trimmedQuery)) {
-        directIds.add(node.id);
+  const focusRowAt = (index: number) => {
+    const node = visibleNodes[index];
+    if (!node) return;
+    setRovingPath(node.path);
+    rowRefs.current.get(node.path)?.focus();
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusRowAt(0);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusRowAt(visibleNodes.length - 1);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (query) {
+        clearSearch();
+      } else {
+        rootRef.current?.focus();
       }
     }
-    const matches = new Map<string, SearchMatch>();
-    for (const id of directIds) {
-      matches.set(id, 'direct');
+  };
+
+  const handleRowKeyDown = (
+    event: KeyboardEvent<HTMLDivElement>,
+    node: ExplorerAssetNode,
+  ) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const currentIndex = visibleNodes.findIndex(item => item.path === node.path);
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      focusRowAt(findNextExplorerAssetIndex(
+        visibleNodes.length,
+        currentIndex,
+        direction,
+      ));
+      return;
     }
-    const visibleIds = new Set<string>(directIds);
-    return { matches, visibleIds };
-  }, [isSearching, trimmedQuery, assetList]);
-
-  const hasAnyMatch = isSearching
-    ? searchResult !== null && searchResult.visibleIds.size > 0
-    : hasAssets;
-
-  const handleSelect = (node: AssetNode) => {
-    if (EXPANDABLE_KINDS.has(node.kind)) return;
-    onSelectAsset?.(node.path);
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelectAsset?.(node.path);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    }
   };
 
   return (
-    <aside className="ue-explorer">
+    <aside
+      ref={rootRef}
+      className="ue-explorer"
+      tabIndex={-1}
+      aria-busy={isRefreshing}
+      data-explorer-refreshing={String(isRefreshing)}
+    >
       <div className="ue-explorer-header">
-        <span className="ue-explorer-title">{copy.ueAgentUi.projectExplorer.title}</span>
+        <div className="ue-explorer-heading">
+          <span className="ue-explorer-title">
+            {copy.ueAgentUi.projectExplorer.title}
+          </span>
+          <button
+            type="button"
+            className="ue-explorer-refresh"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing
+              ? copy.ueAgentUi.projectExplorer.refreshing
+              : copy.ueAgentUi.projectExplorer.refresh}
+          </button>
+        </div>
+        <p className="ue-explorer-scope-note">
+          {copy.ueAgentUi.projectExplorer.scopeNote}
+        </p>
       </div>
-      <div className="ue-explorer-search">
-        <input
-          type="text"
-          placeholder={copy.ueAgentUi.projectExplorer.searchPlaceholder}
-          className="ue-explorer-search-input"
-          value={query}
-          onChange={event => setQuery(event.target.value)}
-          aria-label={copy.ueAgentUi.projectExplorer.searchPlaceholder}
-        />
+
+      <div className="ue-explorer-toolbar">
+        <div className="ue-explorer-search">
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder={copy.ueAgentUi.projectExplorer.searchPlaceholder}
+            className="ue-explorer-search-input"
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            aria-label={copy.ueAgentUi.projectExplorer.searchPlaceholder}
+          />
+          {query && (
+            <button
+              type="button"
+              className="ue-explorer-search-clear"
+              onClick={clearSearch}
+              aria-label={copy.ueAgentUi.projectExplorer.clearSearch}
+              title={copy.ueAgentUi.projectExplorer.clearSearch}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <span className="ue-explorer-result-count" aria-live="polite">
+          {copy.ueAgentUi.projectExplorer.resultCount(
+            visibleNodes.length,
+            assetNodes.length,
+          )}
+        </span>
       </div>
-      <div className="ue-explorer-tree" aria-label="Project assets" role="tree">
-        {hasAssets ? (
-          hasAnyMatch ? (
-            assetList
-              .filter(node => !isSearching || searchResult?.visibleIds.has(node.id))
-              .map(node => (
-                <AssetRow
-                  key={node.id}
-                  node={node}
-                  selectedAssetPath={selectedAssetPath}
-                  currentLabel={copy.ueAgentUi.projectExplorer.currentAssetLabel}
-                  openLabel={copy.ueAgentUi.projectExplorer.openAssetLabel}
-                  dirtyTooltip={copy.ueAgentUi.projectExplorer.dirtyTooltip}
-                  onSelect={handleSelect}
-                />
-              ))
-          ) : (
-            <div className="ue-tree-empty">
-              <span className="ue-empty-state-icon" aria-hidden="true">
-                <SearchEmptyIcon />
-              </span>
-              <span className="ue-tree-empty-title">{copy.ueAgentUi.projectExplorer.noMatchesTitle}</span>
-              <span className="ue-tree-empty-body">{copy.ueAgentUi.projectExplorer.noMatches}</span>
-            </div>
-          )
-        ) : (
+
+      {refreshError && (
+        <div className="ue-explorer-refresh-error" role="alert">
+          <strong>{copy.ueAgentUi.projectExplorer.refreshErrorTitle}</strong>
+          <span>{refreshError}</span>
+        </div>
+      )}
+
+      <div
+        className="ue-explorer-tree"
+        aria-label={copy.ueAgentUi.projectExplorer.listAriaLabel}
+        role="listbox"
+      >
+        {assetNodes.length === 0 ? (
           <div className="ue-tree-empty">
             <span className="ue-empty-state-icon" aria-hidden="true">
               <EmptyAssetsIcon />
             </span>
-            <span className="ue-tree-empty-title">{copy.ueAgentUi.projectExplorer.emptyTitle}</span>
-            <span className="ue-tree-empty-body">{copy.ueAgentUi.projectExplorer.emptyGuidance}</span>
+            <span className="ue-tree-empty-title">
+              {copy.ueAgentUi.projectExplorer.emptyTitle}
+            </span>
+            <span className="ue-tree-empty-body">
+              {copy.ueAgentUi.projectExplorer.emptyGuidance}
+            </span>
+            <button
+              type="button"
+              className="ue-tree-empty-action"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing
+                ? copy.ueAgentUi.projectExplorer.refreshing
+                : copy.ueAgentUi.projectExplorer.refresh}
+            </button>
           </div>
+        ) : visibleNodes.length === 0 ? (
+          <div className="ue-tree-empty">
+            <span className="ue-empty-state-icon" aria-hidden="true">
+              <SearchEmptyIcon />
+            </span>
+            <span className="ue-tree-empty-title">
+              {copy.ueAgentUi.projectExplorer.noMatchesTitle}
+            </span>
+            <span className="ue-tree-empty-body">
+              {copy.ueAgentUi.projectExplorer.noMatches(trimmedQuery)}
+            </span>
+            <button
+              type="button"
+              className="ue-tree-empty-action"
+              onClick={clearSearch}
+            >
+              {copy.ueAgentUi.projectExplorer.clearSearch}
+            </button>
+          </div>
+        ) : (
+          visibleNodes.map(node => {
+            const isEffectiveTarget = node.path === targetAssetPath;
+            const isManualTarget = node.path === manualTargetAssetPath;
+            const isRoving = node.path === resolvedRovingPath;
+            const targetKind = isManualTarget
+              ? 'manual'
+              : isEffectiveTarget
+                ? 'effective'
+                : 'none';
+            const rowClass = [
+              'ue-tree-row',
+              isEffectiveTarget ? 'ue-tree-row-selected' : '',
+              node.isCurrent ? 'ue-tree-row-current' : '',
+              node.isDirty ? 'ue-tree-row-warning' : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
+
+            return (
+              <div
+                key={node.id}
+                ref={element => {
+                  if (element) {
+                    rowRefs.current.set(node.path, element);
+                  } else {
+                    rowRefs.current.delete(node.path);
+                  }
+                }}
+                className={rowClass}
+                role="option"
+                aria-label={node.path}
+                aria-selected={isEffectiveTarget}
+                tabIndex={isRoving ? 0 : -1}
+                data-explorer-asset-path={node.path}
+                data-current-asset={String(node.isCurrent)}
+                data-open-asset={String(node.isOpen)}
+                data-target-kind={targetKind}
+                data-dirty-asset={String(node.isDirty)}
+                onFocus={() => setRovingPath(node.path)}
+                onClick={() => {
+                  setRovingPath(node.path);
+                  onSelectAsset?.(node.path);
+                }}
+                onKeyDown={event => handleRowKeyDown(event, node)}
+                title={node.path}
+              >
+                {renderKindIcon(node.kind)}
+                <span className="ue-tree-name">{node.name}</span>
+                <span className="ue-tree-badges" aria-hidden="true">
+                  {node.isCurrent && (
+                    <span className="ue-tree-badge ue-tree-badge-current">
+                      {copy.ueAgentUi.projectExplorer.currentAssetLabel}
+                    </span>
+                  )}
+                  {node.isOpen && (
+                    <span className="ue-tree-badge ue-tree-badge-open">
+                      {copy.ueAgentUi.projectExplorer.openAssetLabel}
+                    </span>
+                  )}
+                  {isEffectiveTarget && (
+                    <span className="ue-tree-badge ue-tree-badge-target">
+                      {copy.ueAgentUi.projectExplorer.activeTargetLabel}
+                    </span>
+                  )}
+                  {isManualTarget && (
+                    <span className="ue-tree-badge ue-tree-badge-manual">
+                      {copy.ueAgentUi.projectExplorer.chosenTargetLabel}
+                    </span>
+                  )}
+                </span>
+                {node.isDirty && (
+                  <span
+                    className="ue-tree-warning-dot"
+                    title={copy.ueAgentUi.projectExplorer.dirtyTooltip}
+                    aria-label={copy.ueAgentUi.projectExplorer.dirtyTooltip}
+                  />
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </aside>
-  );
-}
-
-interface AssetRowProps {
-  node: AssetNode;
-  selectedAssetPath?: string;
-  currentLabel: string;
-  openLabel: string;
-  dirtyTooltip: string;
-  onSelect: (node: AssetNode) => void;
-}
-
-function AssetRow({
-  node,
-  selectedAssetPath,
-  currentLabel,
-  openLabel,
-  dirtyTooltip,
-  onSelect,
-}: AssetRowProps) {
-  const isSelected = node.path === selectedAssetPath;
-
-  const rowClass = [
-    'ue-tree-row',
-    isSelected ? 'ue-tree-row-selected' : '',
-    node.isCurrent ? 'ue-tree-row-current' : '',
-    node.isDirty ? 'ue-tree-row-warning' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSelect(node);
-    }
-  };
-
-  return (
-    <div
-      className={rowClass}
-      role="treeitem"
-      aria-label={node.path}
-      aria-selected={isSelected}
-      tabIndex={0}
-      onClick={() => onSelect(node)}
-      onKeyDown={handleKeyDown}
-      title={node.path}
-    >
-      {renderKindIcon(node.kind)}
-      <span className="ue-tree-name">{node.name}</span>
-      {node.isCurrent && (
-        <span className="ue-tree-current-badge" aria-label={currentLabel}>
-          {currentLabel}
-        </span>
-      )}
-      {!node.isCurrent && node.isOpen && (
-        <span className="ue-tree-open-badge" aria-label={openLabel}>
-          {openLabel}
-        </span>
-      )}
-      {node.isDirty && (
-        <span
-          className="ue-tree-warning-dot"
-          title={dirtyTooltip}
-          aria-label={dirtyTooltip}
-        />
-      )}
-    </div>
   );
 }

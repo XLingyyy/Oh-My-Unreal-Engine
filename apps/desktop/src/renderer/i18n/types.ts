@@ -463,15 +463,24 @@ export interface UeAgentUiCopy {
   };
   projectExplorer: {
     title: string;
+    scopeNote: string;
+    listAriaLabel: string;
     searchPlaceholder: string;
+    clearSearch: string;
+    refresh: string;
+    refreshing: string;
+    refreshErrorTitle: string;
     currentAssetLabel: string;
     openAssetLabel: string;
+    activeTargetLabel: string;
+    chosenTargetLabel: string;
     dirtyTooltip: string;
+    resultCount: (visible: number, total: number) => string;
     panelCollapseAria: string;
     panelExpandAria: string;
     overlayLabel: string;
     noMatchesTitle: string;
-    noMatches: string;
+    noMatches: (query: string) => string;
     emptyTitle: string;
     emptyGuidance: string;
   };

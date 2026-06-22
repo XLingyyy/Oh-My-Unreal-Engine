@@ -309,7 +309,11 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
             <ProjectExplorer
               currentAsset={state.composer.currentAsset}
               openAssets={state.composer.openAssets}
-              selectedAssetPath={state.composer.state.targetAssetPath}
+              targetAssetPath={state.composer.state.targetAssetPath}
+              manualTargetAssetPath={state.composer.targetChoice}
+              isRefreshing={state.bridge.isRefreshing}
+              refreshError={state.bridge.error}
+              onRefresh={state.bridge.refreshContext}
               onSelectAsset={state.composer.selectAssetTarget}
             />
           </div>
@@ -321,7 +325,11 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
         <ProjectExplorer
           currentAsset={state.composer.currentAsset}
           openAssets={state.composer.openAssets}
-          selectedAssetPath={state.composer.state.targetAssetPath}
+          targetAssetPath={state.composer.state.targetAssetPath}
+          manualTargetAssetPath={state.composer.targetChoice}
+          isRefreshing={state.bridge.isRefreshing}
+          refreshError={state.bridge.error}
+          onRefresh={state.bridge.refreshContext}
           onSelectAsset={state.composer.selectAssetTarget}
         />
       );

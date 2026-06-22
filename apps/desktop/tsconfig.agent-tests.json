@@ -35,6 +35,7 @@
     "src/renderer/components/workbench/languagePreferenceState.ts",
     "src/renderer/components/workbench/appearancePreferenceState.ts",
     "src/renderer/components/workbench/agentCardPresentation.ts",
+    "src/renderer/components/workbench/projectExplorerModel.ts",
     "src/renderer/hooks/commandPaletteNavigation.ts",
     "src/renderer/hooks/drawerNavigation.ts",
     "src/main/settings/provider-authority.ts"
