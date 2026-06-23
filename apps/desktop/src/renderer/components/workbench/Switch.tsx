@@ -1,6 +1,6 @@
 export interface SwitchProps {
   checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
+  onCheckedChange?: (checked: boolean) => void;
   ariaLabel: string;
   disabled?: boolean;
   disabledReason?: string;
@@ -27,7 +27,7 @@ export function Switch({
         checked={checked}
         disabled={disabled}
         aria-label={ariaLabel}
-        onChange={event => onCheckedChange(event.target.checked)}
+        onChange={event => onCheckedChange?.(event.target.checked)}
       />
       <span className="ue-switch-track" aria-hidden="true">
         <span className="ue-switch-thumb" />

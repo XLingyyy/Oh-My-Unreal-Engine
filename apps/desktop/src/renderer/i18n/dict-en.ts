@@ -186,6 +186,13 @@ export const en: DesktopCopy = {
         privacyLog: 'Privacy & Log',
         advanced: 'Advanced',
       },
+      capability: {
+        persistedOnlyLabel: 'Persisted only',
+        persistedOnlyDetail: 'Saved, but not used by the current runtime.',
+        unavailableLabel: 'Unavailable',
+        readOnlyLabel: 'Read-only runtime fact',
+        readOnlyDetail: 'Comes from the live runtime; not editable here.',
+      },
       general: {
         title: 'General',
         startupBehavior: 'Startup behavior',
@@ -196,6 +203,9 @@ export const en: DesktopCopy = {
         checkUpdatesDescription: 'Automatically check for OMUE updates.',
         crashReports: 'Send crash reports',
         crashReportsDescription: 'Help improve OMUE by sending crash reports.',
+        startupPersistedOnlyReason: 'The startup option is saved for compatibility, but no startup pipeline consumes it in this build.',
+        updateUnavailableReason: 'No update check pipeline exists in this build.',
+        crashReportUnavailableReason: 'No crash report pipeline exists in this build.',
       },
       modelProviders: {
         title: 'Model Providers',
@@ -366,6 +376,11 @@ export const en: DesktopCopy = {
         autoScan: 'Auto-scan assets',
         taskRelatedOnly: 'Task-related only',
         mockIndicator: 'Mock bridge — connection settings are simulated',
+        storedValuesReason: 'Stored for compatibility; the current Bridge runtime does not consume these values.',
+        reconnectUnavailableReason: 'Reconnect is not wired in this build.',
+        testConnectionUnavailableReason: 'Test connection is not wired in this build.',
+        runtimeFactReason: 'Reported by the live bridge runtime; not editable here.',
+        mockRuntimeFactReason: 'Simulated by the mock bridge; not editable here.',
       },
       sandboxSecurity: {
         title: 'Sandbox & Security',
@@ -432,6 +447,8 @@ export const en: DesktopCopy = {
         retentionForever: 'Forever',
         clearLocalLogs: 'Clear local logs',
         localOnly: 'All processing is local — no data leaves your machine',
+        persistedOnlyReason: 'These values are stored for compatibility; no telemetry, logging, or masking pipeline consumes them in this build.',
+        clearLogsUnavailableReason: 'No local log clearing pipeline is wired in this build.',
       },
       advanced: {
         title: 'Advanced',

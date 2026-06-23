@@ -186,6 +186,13 @@ export const zhCN: DesktopCopy = {
         privacyLog: '隐私与日志',
         advanced: '高级',
       },
+      capability: {
+        persistedOnlyLabel: '仅持久化',
+        persistedOnlyDetail: '已保存，但当前运行时未消费。',
+        unavailableLabel: '不可用',
+        readOnlyLabel: '只读运行时事实',
+        readOnlyDetail: '由实时运行时提供，此处不可编辑。',
+      },
       general: {
         title: '通用',
         startupBehavior: '启动行为',
@@ -196,6 +203,9 @@ export const zhCN: DesktopCopy = {
         checkUpdatesDescription: '自动检查 OMUE 更新。',
         crashReports: '发送崩溃报告',
         crashReportsDescription: '通过发送崩溃报告帮助改进 OMUE。',
+        startupPersistedOnlyReason: '该启动选项仅为兼容性而保存，当前构建的启动流程未消费此项。',
+        updateUnavailableReason: '当前构建没有更新检查管线。',
+        crashReportUnavailableReason: '当前构建没有崩溃报告管线。',
       },
       modelProviders: {
         title: '模型提供商',
@@ -366,6 +376,11 @@ export const zhCN: DesktopCopy = {
         autoScan: '自动扫描资源',
         taskRelatedOnly: '仅任务相关',
         mockIndicator: '模拟桥接 — 连接设置为模拟',
+        storedValuesReason: '仅为兼容性而保存；当前 Bridge 运行时不消费这些值。',
+        reconnectUnavailableReason: '当前构建未连接重新连接动作。',
+        testConnectionUnavailableReason: '当前构建未连接测试连接动作。',
+        runtimeFactReason: '由实时桥接运行时上报，此处不可编辑。',
+        mockRuntimeFactReason: '由模拟桥接生成，此处不可编辑。',
       },
       sandboxSecurity: {
         title: '沙箱与安全',
@@ -432,6 +447,8 @@ export const zhCN: DesktopCopy = {
         retentionForever: '永久',
         clearLocalLogs: '清除本地日志',
         localOnly: '所有处理均在本地完成 — 数据不会离开您的设备',
+        persistedOnlyReason: '这些值仅为兼容性而保存；当前构建的遥测、日志或脱敏管线均不消费它们。',
+        clearLogsUnavailableReason: '当前构建未连接本地日志清理管线。',
       },
       advanced: {
         title: '高级',

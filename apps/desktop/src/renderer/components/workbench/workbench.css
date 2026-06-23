@@ -2886,6 +2886,77 @@
   cursor: not-allowed;
 }
 
+/* ── Settings Factual Capability Convergence: capability status ── */
+
+.ue-settings-capability {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  max-width: 560px;
+  box-sizing: border-box;
+}
+
+.ue-settings-capability-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ue-settings-capability-detail {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+[data-settings-capability="persisted-only"] {
+  border-left: 3px solid var(--accent-warning);
+}
+
+[data-settings-capability="persisted-only"] .ue-settings-capability-label {
+  color: var(--accent-warning);
+}
+
+[data-settings-capability="unavailable"] {
+  border-left: 3px solid var(--accent-error);
+}
+
+[data-settings-capability="unavailable"] .ue-settings-capability-label {
+  color: var(--accent-error);
+}
+
+[data-settings-capability="read-only"] {
+  border-left: 3px solid var(--accent-blue);
+}
+
+[data-settings-capability="read-only"] .ue-settings-capability-label {
+  color: var(--accent-blue);
+}
+
+.ue-settings-stored-value {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  max-width: 400px;
+  box-sizing: border-box;
+}
+
+.ue-settings-runtime-fact {
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: 7px 10px;
+  background: var(--bg-card-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  max-width: 400px;
+  box-sizing: border-box;
+}
+
 /* ── UI Foundation Cleanup: SettingsRow primitive ── */
 
 .ue-settings-row {

@@ -98,7 +98,6 @@ export function SettingsPage({
         return (
           <GeneralSettings
             settings={settings.general}
-            onUpdate={patch => onUpdateCategory('general', patch)}
           />
         );
       case 'modelProviders':
@@ -146,7 +145,6 @@ export function SettingsPage({
         return (
           <UEConnectionSettings
             settings={settings.ueConnection}
-            onUpdate={patch => onUpdateCategory('ueConnection', patch)}
             connectionView={connectionView}
           />
         );
@@ -161,7 +159,6 @@ export function SettingsPage({
         return (
           <PrivacyLogSettings
             settings={settings.privacyLog}
-            onUpdate={patch => onUpdateCategory('privacyLog', patch)}
           />
         );
       case 'advanced':

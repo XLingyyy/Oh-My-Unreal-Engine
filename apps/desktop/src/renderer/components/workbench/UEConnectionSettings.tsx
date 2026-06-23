@@ -2,14 +2,14 @@ import { useDesktopCopy } from '../../i18n';
 import type { UEConnectionSettings as UEConnectionSettingsState } from './settings/settingsTypes';
 import type { UeConnectionView } from './workbenchStatusViewModel';
 import { Switch } from './Switch';
+import { SettingsCapabilityStatus } from './SettingsCapabilityStatus';
 
 interface UEConnectionSettingsProps {
   settings: UEConnectionSettingsState;
-  onUpdate: (patch: Partial<UEConnectionSettingsState>) => void;
   connectionView: UeConnectionView;
 }
 
-const BRIDGE_TOGGLES: Array<{ key: keyof Omit<UEConnectionSettingsState, 'projectPath' | 'enginePath' | 'host' | 'port'>; labelKey: string }> = [
+const BRIDGE_TOGGLES: Array<{ key: keyof Pick<UEConnectionSettingsState, 'scanOnStartup' | 'watchAssetChanges' | 'autoScan' | 'taskRelatedOnly'>; labelKey: string }> = [
   { key: 'scanOnStartup', labelKey: 'scanOnStartup' },
   { key: 'watchAssetChanges', labelKey: 'watchAssetChanges' },
   { key: 'autoScan', labelKey: 'autoScan' },
@@ -61,35 +61,14 @@ function healthStatusLabel(
   }
 }
 
-export function UEConnectionSettings({ settings, onUpdate, connectionView }: UEConnectionSettingsProps) {
+export function UEConnectionSettings({ settings, connectionView }: UEConnectionSettingsProps) {
   const { copy } = useDesktopCopy();
   const t = copy.ueAgentUi.settingsPage.ueConnection;
+  const cap = copy.ueAgentUi.settingsPage.capability;
   const isMock = connectionView.isMock;
 
   return (
-    <section className="ue-settings-section">
-      <div className="ue-settings-field">
-        <label className="ue-settings-label">{t.projectPath}</label>
-        <input
-          type="text"
-          className="ue-settings-input"
-          placeholder={t.projectPathPlaceholder}
-          value={settings.projectPath}
-          onChange={e => onUpdate({ projectPath: e.target.value })}
-        />
-      </div>
-
-      <div className="ue-settings-field">
-        <label className="ue-settings-label">{t.enginePath}</label>
-        <input
-          type="text"
-          className="ue-settings-input"
-          placeholder={t.enginePathPlaceholder}
-          value={settings.enginePath}
-          onChange={e => onUpdate({ enginePath: e.target.value })}
-        />
-      </div>
-
+    <section className="ue-settings-section" data-settings-factual="ueConnection">
       <div className="ue-settings-field">
         <span className="ue-settings-label">{t.bridgeStatus}</span>
         <span className="ue-settings-bridge-status">
@@ -116,7 +95,75 @@ export function UEConnectionSettings({ settings, onUpdate, connectionView }: UEC
             ? t.lastCheckedAt(connectionView.lastCheckedAt)
             : t.neverChecked}
         </span>
+        <SettingsCapabilityStatus
+          kind="read-only"
+          label={cap.readOnlyLabel}
+          detail={isMock ? t.mockRuntimeFactReason : <>{cap.readOnlyDetail} {t.runtimeFactReason}</>}
+        />
       </div>
+
+      <div className="ue-settings-field">
+        <span className="ue-settings-label">{t.projectPath}</span>
+        <input
+          type="text"
+          className="ue-settings-input"
+          placeholder={t.projectPathPlaceholder}
+          value={settings.projectPath}
+          readOnly
+          aria-readonly
+        />
+      </div>
+
+      <div className="ue-settings-field">
+        <span className="ue-settings-label">{t.enginePath}</span>
+        <input
+          type="text"
+          className="ue-settings-input"
+          placeholder={t.enginePathPlaceholder}
+          value={settings.enginePath}
+          readOnly
+          aria-readonly
+        />
+      </div>
+
+      <div className="ue-settings-field">
+        <label className="ue-settings-label">{t.host}</label>
+        <input
+          type="text"
+          className="ue-settings-input"
+          value={settings.host}
+          readOnly
+          aria-readonly
+        />
+      </div>
+
+      <div className="ue-settings-field">
+        <label className="ue-settings-label">{t.port}</label>
+        <input
+          type="text"
+          className="ue-settings-input"
+          value={String(settings.port)}
+          readOnly
+          aria-readonly
+        />
+      </div>
+
+      {BRIDGE_TOGGLES.map(toggle => (
+        <div key={toggle.key} className="ue-settings-toggle-row">
+          <span>{t[toggle.labelKey as keyof typeof t] as string}</span>
+          <Switch
+            checked={settings[toggle.key]}
+            disabled
+            ariaLabel={t[toggle.labelKey as keyof typeof t] as string}
+          />
+        </div>
+      ))}
+
+      <SettingsCapabilityStatus
+        kind="persisted-only"
+        label={cap.persistedOnlyLabel}
+        detail={<>{cap.persistedOnlyDetail} {t.storedValuesReason}</>}
+      />
 
       <div className="ue-settings-actions">
         <button
@@ -136,17 +183,11 @@ export function UEConnectionSettings({ settings, onUpdate, connectionView }: UEC
           {isMock ? t.testConnection : t.testConnectionUnavailable}
         </button>
       </div>
-
-      {BRIDGE_TOGGLES.map(toggle => (
-        <div key={toggle.key} className="ue-settings-toggle-row">
-          <span>{t[toggle.labelKey as keyof typeof t] as string}</span>
-          <Switch
-            checked={settings[toggle.key]}
-            onCheckedChange={value => onUpdate({ [toggle.key]: value })}
-            ariaLabel={t[toggle.labelKey as keyof typeof t] as string}
-          />
-        </div>
-      ))}
+      <SettingsCapabilityStatus
+        kind="unavailable"
+        label={cap.unavailableLabel}
+        detail={isMock ? t.mockIndicator : `${t.reconnectUnavailableReason} ${t.testConnectionUnavailableReason}`}
+      />
     </section>
   );
 }

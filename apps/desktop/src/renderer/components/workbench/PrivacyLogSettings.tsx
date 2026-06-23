@@ -1,34 +1,34 @@
 import { useDesktopCopy } from '../../i18n';
 import type { PrivacyLogSettings } from './settings/settingsTypes';
 import { Switch } from './Switch';
+import { SettingsCapabilityStatus } from './SettingsCapabilityStatus';
 
 interface PrivacyLogSettingsProps {
   settings: PrivacyLogSettings;
-  onUpdate: (patch: Partial<PrivacyLogSettings>) => void;
 }
 
-const DATA_USAGE_TOGGLES: Array<{ key: keyof PrivacyLogSettings['dataUsage']; labelKey: string }> = [
+const DATA_USAGE_TOGGLES: Array<{ key: keyof PrivacyLogSettings['dataUsage']; labelKey: 'anonymousTelemetry' | 'crashReports' | 'usageStatistics' | 'improvementProgram' }> = [
   { key: 'anonymousTelemetry', labelKey: 'anonymousTelemetry' },
   { key: 'crashReports', labelKey: 'crashReports' },
   { key: 'usageStatistics', labelKey: 'usageStatistics' },
   { key: 'improvementProgram', labelKey: 'improvementProgram' },
 ];
 
-const LOGGING_TOGGLES: Array<{ key: keyof PrivacyLogSettings['logging']; labelKey: string }> = [
+const LOGGING_TOGGLES: Array<{ key: keyof PrivacyLogSettings['logging']; labelKey: 'bridgeCommunication' | 'agentStateChanges' | 'userActions' | 'performanceMetrics' }> = [
   { key: 'bridgeCommunication', labelKey: 'bridgeCommunication' },
   { key: 'agentStateChanges', labelKey: 'agentStateChanges' },
   { key: 'userActions', labelKey: 'userActions' },
   { key: 'performanceMetrics', labelKey: 'performanceMetrics' },
 ];
 
-const SENSITIVE_TOGGLES: Array<{ key: keyof PrivacyLogSettings['sensitiveInfoProtection']; labelKey: string }> = [
+const SENSITIVE_TOGGLES: Array<{ key: keyof PrivacyLogSettings['sensitiveInfoProtection']; labelKey: 'maskApiKeys' | 'maskFilePaths' | 'maskAssetNames' | 'maskUserInput' }> = [
   { key: 'maskApiKeys', labelKey: 'maskApiKeys' },
   { key: 'maskFilePaths', labelKey: 'maskFilePaths' },
   { key: 'maskAssetNames', labelKey: 'maskAssetNames' },
   { key: 'maskUserInput', labelKey: 'maskUserInput' },
 ];
 
-const RETENTION_OPTIONS: Array<{ value: PrivacyLogSettings['logRetention']; labelKey: string }> = [
+const RETENTION_OPTIONS: Array<{ value: PrivacyLogSettings['logRetention']; labelKey: 'retention24h' | 'retention7d' | 'retention30d' | 'retention90d' | 'retentionForever' }> = [
   { value: '24h', labelKey: 'retention24h' },
   { value: '7d', labelKey: 'retention7d' },
   { value: '30d', labelKey: 'retention30d' },
@@ -36,13 +36,19 @@ const RETENTION_OPTIONS: Array<{ value: PrivacyLogSettings['logRetention']; labe
   { value: 'forever', labelKey: 'retentionForever' },
 ];
 
-export function PrivacyLogSettings({ settings, onUpdate }: PrivacyLogSettingsProps) {
+export function PrivacyLogSettings({ settings }: PrivacyLogSettingsProps) {
   const { copy } = useDesktopCopy();
-  const _t = copy.ueAgentUi.settingsPage.privacyLog;
-  const t = _t as unknown as Record<string, string>;
+  const t = copy.ueAgentUi.settingsPage.privacyLog;
+  const cap = copy.ueAgentUi.settingsPage.capability;
 
   return (
-    <section className="ue-settings-section">
+    <section className="ue-settings-section" data-settings-factual="privacyLog">
+      <SettingsCapabilityStatus
+        kind="persisted-only"
+        label={cap.persistedOnlyLabel}
+        detail={<>{cap.persistedOnlyDetail} {t.persistedOnlyReason}</>}
+      />
+
       <div className="ue-settings-field">
         <span className="ue-settings-label">{t.dataUsage}</span>
         {DATA_USAGE_TOGGLES.map(toggle => (
@@ -50,9 +56,7 @@ export function PrivacyLogSettings({ settings, onUpdate }: PrivacyLogSettingsPro
             <span>{t[toggle.labelKey]}</span>
             <Switch
               checked={settings.dataUsage[toggle.key]}
-              onCheckedChange={value => onUpdate({
-                dataUsage: { ...settings.dataUsage, [toggle.key]: value }
-              })}
+              disabled
               ariaLabel={t[toggle.labelKey]}
             />
           </div>
@@ -66,9 +70,7 @@ export function PrivacyLogSettings({ settings, onUpdate }: PrivacyLogSettingsPro
             <span>{t[toggle.labelKey]}</span>
             <Switch
               checked={settings.logging[toggle.key]}
-              onCheckedChange={value => onUpdate({
-                logging: { ...settings.logging, [toggle.key]: value }
-              })}
+              disabled
               ariaLabel={t[toggle.labelKey]}
             />
           </div>
@@ -82,9 +84,7 @@ export function PrivacyLogSettings({ settings, onUpdate }: PrivacyLogSettingsPro
             <span>{t[toggle.labelKey]}</span>
             <Switch
               checked={settings.sensitiveInfoProtection[toggle.key]}
-              onCheckedChange={value => onUpdate({
-                sensitiveInfoProtection: { ...settings.sensitiveInfoProtection, [toggle.key]: value }
-              })}
+              disabled
               ariaLabel={t[toggle.labelKey]}
             />
           </div>
@@ -96,7 +96,7 @@ export function PrivacyLogSettings({ settings, onUpdate }: PrivacyLogSettingsPro
         <select
           className="ue-settings-select"
           value={settings.logRetention}
-          onChange={e => onUpdate({ logRetention: e.target.value as PrivacyLogSettings['logRetention'] })}
+          disabled
         >
           {RETENTION_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>{t[opt.labelKey]}</option>
@@ -105,10 +105,15 @@ export function PrivacyLogSettings({ settings, onUpdate }: PrivacyLogSettingsPro
       </div>
 
       <div className="ue-settings-actions">
-        <button type="button" className="ue-settings-btn ue-settings-btn-disabled" disabled title={t.localOnly}>
+        <button type="button" className="ue-settings-btn ue-settings-btn-disabled" disabled>
           {t.clearLocalLogs}
         </button>
       </div>
+      <SettingsCapabilityStatus
+        kind="unavailable"
+        label={cap.unavailableLabel}
+        detail={t.clearLogsUnavailableReason}
+      />
     </section>
   );
 }

@@ -179,6 +179,13 @@ export interface UeAgentUiCopy {
       privacyLog: string;
       advanced: string;
     };
+    capability: {
+      persistedOnlyLabel: string;
+      persistedOnlyDetail: string;
+      unavailableLabel: string;
+      readOnlyLabel: string;
+      readOnlyDetail: string;
+    };
     general: {
       title: string;
       startupBehavior: string;
@@ -189,6 +196,9 @@ export interface UeAgentUiCopy {
       checkUpdatesDescription: string;
       crashReports: string;
       crashReportsDescription: string;
+      startupPersistedOnlyReason: string;
+      updateUnavailableReason: string;
+      crashReportUnavailableReason: string;
     };
       modelProviders: {
       title: string;
@@ -359,6 +369,11 @@ export interface UeAgentUiCopy {
       autoScan: string;
       taskRelatedOnly: string;
       mockIndicator: string;
+      storedValuesReason: string;
+      reconnectUnavailableReason: string;
+      testConnectionUnavailableReason: string;
+      runtimeFactReason: string;
+      mockRuntimeFactReason: string;
     };
     sandboxSecurity: {
       title: string;
@@ -425,6 +440,8 @@ export interface UeAgentUiCopy {
       retentionForever: string;
       clearLocalLogs: string;
       localOnly: string;
+      persistedOnlyReason: string;
+      clearLogsUnavailableReason: string;
     };
     advanced: {
       title: string;
