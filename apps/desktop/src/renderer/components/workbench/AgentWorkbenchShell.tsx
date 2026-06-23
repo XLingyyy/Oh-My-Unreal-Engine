@@ -33,6 +33,7 @@ import {
   persistAppearanceChange,
   type AppearancePatch,
 } from './appearancePreferenceState';
+import { buildDrawerFactualSourceModel } from './drawerFactualSourceAdapter';
 
 interface AgentWorkbenchShellProps {
   client: BridgeClient;
@@ -65,6 +66,20 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
   const [appearanceUpdatePending, setAppearanceUpdatePending] = useState(false);
   const responsive = useWorkbenchResponsiveState();
   const selectedSession = state.agent.selectedSession;
+  const drawerSourceModel = useMemo(
+    () => buildDrawerFactualSourceModel({
+      isMockClient,
+      snapshot: state.bridge.snapshot,
+      bridgeError: state.bridge.error,
+      selectedSession,
+    }),
+    [
+      isMockClient,
+      selectedSession,
+      state.bridge.error,
+      state.bridge.snapshot,
+    ],
+  );
   const interruptedSessionId =
     isInterruptedState(selectedSession?.currentState ?? 'draft')
       ? selectedSession?.sessionId
@@ -117,15 +132,37 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
 
     for (const item of DRAWER_ITEM_IDS) {
       const drawerLabel = drawerLabels[item];
+      const factualAuthority =
+        item === 'questions'
+          ? drawerSourceModel.pages.questions
+          : item === 'closure'
+            ? drawerSourceModel.pages.closure
+            : item === 'change-plan'
+              ? drawerSourceModel.pages.changePlan
+              : item === 'bp-change-workspace'
+                ? drawerSourceModel.pages.blueprintChangeWorkspace
+                : null;
+      const disabled = factualAuthority
+        ? !factualAuthority.available
+        : !state.bridge.snapshot;
+      const disabledReason = !disabled
+        ? undefined
+        : item === 'questions'
+          ? copy.ueAgentUi.drawer.sourceBoundary.commandUnavailableQuestions
+          : item === 'closure'
+            ? copy.ueAgentUi.drawer.sourceBoundary.commandUnavailableClosure
+            : item === 'change-plan'
+              ? copy.ueAgentUi.drawer.sourceBoundary.commandUnavailableChangePlan
+              : item === 'bp-change-workspace'
+                ? copy.ueAgentUi.drawer.sourceBoundary.commandUnavailableBlueprintWorkspace
+                : commandCopy.disabledReasons.contextRequired;
       list.push({
         id: `drawer-${item}`,
         label: commandCopy.commands.openDrawer(drawerLabel),
         group: commandCopy.groups.drawer,
         keywords: ['drawer', item, drawerLabel],
-        disabled: !state.bridge.snapshot,
-        disabledReason: !state.bridge.snapshot
-          ? commandCopy.disabledReasons.contextRequired
-          : undefined,
+        disabled,
+        disabledReason,
         run: () => state.drawer.openDrawer(item),
       });
     }
@@ -157,6 +194,8 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
     activeView,
     copy.ueAgentUi.commandPalette,
     copy.ueAgentUi.drawer.items,
+    copy.ueAgentUi.drawer.sourceBoundary,
+    drawerSourceModel,
     state.agent.handleNewSession,
     state.agent.resumeSession,
     state.bridge.isRefreshing,
@@ -477,9 +516,9 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
 
       <DrawerPanel
         state={state}
-        client={client}
         isMockClient={isMockClient}
         isCommandPaletteOpen={palette.isOpen}
+        sourceModel={drawerSourceModel}
       />
       <CommandPalette
         isOpen={palette.isOpen}

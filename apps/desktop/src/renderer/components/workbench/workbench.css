@@ -1233,6 +1233,9 @@
 }
 
 .wb-drawer-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 6px 8px;
   white-space: nowrap;
   font-size: 12px;
@@ -1389,6 +1392,180 @@
   margin: 0;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+/* ── Drawer factual source convergence ── */
+
+.wb-drawer-factual-page {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.wb-drawer-factual-page > .cpp-workspace,
+.wb-drawer-factual-page > .bcw-panel,
+.wb-drawer-factual-page > .icp-panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wb-drawer-source-status {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-card-soft);
+  font-size: 12px;
+}
+
+.wb-drawer-source-primary,
+.wb-drawer-source-detail {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wb-drawer-source-label,
+.wb-drawer-source-detail > :first-child {
+  color: var(--text-muted);
+}
+
+.wb-drawer-source-detail > :last-child {
+  color: var(--text-secondary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.wb-drawer-source-badge,
+.wb-drawer-tab-source {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.wb-drawer-source-badge {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.wb-drawer-tab-source {
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.wb-drawer-source-badge-live {
+  background: color-mix(in srgb, var(--accent-success) 18%, transparent);
+  color: var(--accent-success);
+}
+
+.wb-drawer-source-badge-persisted-real {
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  color: var(--accent-primary);
+}
+
+.wb-drawer-source-badge-cache {
+  background: color-mix(in srgb, var(--accent-warning) 18%, transparent);
+  color: var(--accent-warning);
+}
+
+.wb-drawer-source-badge-mock {
+  background: color-mix(in srgb, var(--accent-agent) 18%, transparent);
+  color: var(--accent-agent);
+}
+
+.wb-drawer-source-badge-unavailable {
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-muted);
+}
+
+.wb-drawer-tab-active .wb-drawer-tab-source {
+  background: color-mix(in srgb, var(--text-on-accent) 18%, transparent);
+  color: var(--text-on-accent);
+}
+
+.wb-drawer-unavailable {
+  min-height: 160px;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 24px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-card-soft);
+  text-align: center;
+}
+
+.wb-drawer-unavailable strong,
+.wb-drawer-persisted-facts h3 {
+  color: var(--text-primary);
+}
+
+.wb-drawer-unavailable p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.wb-drawer-persisted-facts {
+  display: grid;
+  gap: 10px;
+}
+
+.wb-drawer-persisted-facts h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.wb-drawer-proposal-list {
+  display: grid;
+  gap: 10px;
+}
+
+.wb-drawer-proposal {
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  background: var(--bg-card-soft);
+}
+
+.wb-drawer-fact-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.wb-drawer-fact-list > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.42fr) minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.wb-drawer-fact-list > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.wb-drawer-fact-list dt {
+  color: var(--text-muted);
+}
+
+.wb-drawer-fact-list dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 /* ── Phase 3: AgentCard + PillTag + ActionButton + CodeSnippet ── */

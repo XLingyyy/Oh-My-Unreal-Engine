@@ -213,7 +213,7 @@ test('Drawer uses tab semantics, roving tabindex and keyboard navigation', () =>
   assert.match(src, /data-active-drawer-item=/);
 });
 
-test('Drawer close paths restore focus and no-context state hides tabs', () => {
+test('Drawer close paths restore focus and tabs remain stable without context', () => {
   const src = readSource('src/renderer/components/workbench/DrawerPanel.tsx');
   assert.match(src, /previousFocusRef/);
   assert.match(src, /data-workbench-chat-input/);
@@ -222,7 +222,24 @@ test('Drawer close paths restore focus and no-context state hides tabs', () => {
   assert.match(src, /event\.key === ['"]Escape['"]/);
   assert.match(src, /noContextTitle/);
   assert.match(src, /noContextDetail/);
-  assert.match(src, /snapshot\s*\?\s*\(/);
+  assert.match(src, /DRAWER_ITEM_IDS\.map/);
+  assert.match(src, /data-drawer-source-kind=/);
+  assert.doesNotMatch(
+    src,
+    /\{snapshot\s*\?\s*\(\s*<div[\s\S]*className="wb-drawer-tabs"/,
+  );
+});
+
+test('factual Drawer commands use the shared source model and typed reasons', () => {
+  const shell = readSource('src/renderer/components/workbench/AgentWorkbenchShell.tsx');
+  assert.match(shell, /drawerSourceModel\.pages\.questions/);
+  assert.match(shell, /drawerSourceModel\.pages\.closure/);
+  assert.match(shell, /drawerSourceModel\.pages\.changePlan/);
+  assert.match(shell, /drawerSourceModel\.pages\.blueprintChangeWorkspace/);
+  assert.match(shell, /commandUnavailableQuestions/);
+  assert.match(shell, /commandUnavailableClosure/);
+  assert.match(shell, /commandUnavailableChangePlan/);
+  assert.match(shell, /commandUnavailableBlueprintWorkspace/);
 });
 
 test('typed English and Chinese command and Drawer copy is present', () => {

@@ -50,6 +50,8 @@ interface Props {
   investigationReview: InvestigationReviewState;
   lastUpdatedAt: string | null;
   questionMatrixState: QuestionMatrixState;
+  includeMockBtBlackboardQuestions: boolean;
+  noQuestionsText?: string;
   onEntryUpdate: (entryId: string, entry: QuestionReviewEntry) => void;
   onReset: () => void;
 }
@@ -498,7 +500,8 @@ export function InvestigationQuestionMatrixPanel(props: Props) {
   const {
     snapshot, evidenceChains, graphDetail, nodeEvidenceMap,
     queueItems, queueSessionNotes, investigationReview, lastUpdatedAt,
-    questionMatrixState, onEntryUpdate, onReset,
+    questionMatrixState, includeMockBtBlackboardQuestions, noQuestionsText,
+    onEntryUpdate, onReset,
   } = props;
   const { copy } = useDesktopCopy();
   const qmc = copy.questionMatrix;
@@ -513,12 +516,19 @@ export function InvestigationQuestionMatrixPanel(props: Props) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'failed'>('idle');
 
   // Generate questions deterministically
-  const allQuestions = useMemo(() => generateQuestions({
+  const allQuestions = useMemo(() => {
+    const generatedQuestions = generateQuestions({
+      snapshot, evidenceChains, graphDetail, nodeEvidenceMap,
+      queueItems, investigationReview,
+    });
+    return includeMockBtBlackboardQuestions
+      ? generatedQuestions
+      : generatedQuestions.filter(
+          question => question.category !== 'bt-blackboard',
+        );
+  }, [
     snapshot, evidenceChains, graphDetail, nodeEvidenceMap,
-    queueItems, investigationReview,
-  }), [
-    snapshot, evidenceChains, graphDetail, nodeEvidenceMap,
-    queueItems, investigationReview,
+    queueItems, investigationReview, includeMockBtBlackboardQuestions,
   ]);
 
   // Apply filters
@@ -697,7 +707,7 @@ export function InvestigationQuestionMatrixPanel(props: Props) {
       {/* Empty: no questions */}
       {!noSnapshot && allQuestions.length === 0 && (
         <div className="iqm-empty">
-          <p>{qmc.noQuestions}</p>
+          <p>{noQuestionsText ?? qmc.noQuestions}</p>
         </div>
       )}
 

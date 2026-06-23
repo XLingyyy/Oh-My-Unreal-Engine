@@ -10,7 +10,6 @@ import {
   type DrawerItem,
 } from '../../hooks/drawerNavigation';
 import { useDesktopCopy } from '../../i18n';
-import type { BridgeClient } from '../../services';
 import { InvestigationSessionPanel } from '../InvestigationSessionPanel';
 import { InvestigationQueuePanel } from '../InvestigationQueuePanel';
 import { InvestigationQuestionMatrixPanel } from '../InvestigationQuestionMatrixPanel';
@@ -20,26 +19,36 @@ import ChangePlanPackageWorkspace from '../ChangePlanPackageWorkspace';
 import BlueprintChangeWorkspacePanel from '../BlueprintChangeWorkspacePanel';
 import { MOCK_BB_DIAGNOSTIC_SUMMARY } from '../BehaviorTreeBlackboardDiagnosticPanel';
 import { buildHandoffSourceModel } from './handoffSourceAdapter';
+import {
+  DrawerSourceStatus,
+  DrawerUnavailableState,
+} from './DrawerSourceStatus';
+import type {
+  DrawerFactualSourceModel,
+  DrawerPageAuthority,
+} from './drawerFactualSourceAdapter';
 
 type WorkbenchState = ReturnType<typeof useAgentWorkbenchState>;
 
 interface DrawerPanelProps {
   state: WorkbenchState;
-  client: BridgeClient;
   isMockClient: boolean;
   isCommandPaletteOpen: boolean;
+  sourceModel: DrawerFactualSourceModel;
 }
 
 export function DrawerPanel({
   state,
   isMockClient,
   isCommandPaletteOpen,
+  sourceModel,
 }: DrawerPanelProps) {
   const { copy } = useDesktopCopy();
   const snapshot = state.bridge.snapshot;
   const drawer = state.drawer;
   const investigation = state.investigation;
   const context = state.context;
+  const sourceBoundary = copy.ueAgentUi.drawer.sourceBoundary;
   const handoffSourceModel = buildHandoffSourceModel({
     isMockClient,
     snapshot,
@@ -68,11 +77,7 @@ export function DrawerPanel({
           document.activeElement instanceof HTMLElement
             ? document.activeElement
             : null;
-        if (snapshot) {
-          tabRefs.current[drawer.activeDrawerItem]?.focus();
-        } else {
-          closeButtonRef.current?.focus();
-        }
+        tabRefs.current[drawer.activeDrawerItem]?.focus();
       });
       return () => window.cancelAnimationFrame(frame);
     }
@@ -91,16 +96,15 @@ export function DrawerPanel({
   }, [
     drawer.activeDrawerItem,
     drawer.isDrawerOpen,
-    snapshot,
   ]);
 
   useEffect(() => {
-    if (!drawer.isDrawerOpen || !snapshot) return;
+    if (!drawer.isDrawerOpen) return;
     const frame = window.requestAnimationFrame(() => {
       tabRefs.current[drawer.activeDrawerItem]?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [drawer.activeDrawerItem, drawer.isDrawerOpen, snapshot]);
+  }, [drawer.activeDrawerItem, drawer.isDrawerOpen]);
 
   useEffect(() => {
     if (!drawer.isDrawerOpen || isCommandPaletteOpen) return;
@@ -149,7 +153,171 @@ export function DrawerPanel({
 
   if (!drawer.isDrawerOpen) return null;
 
-  const content = !snapshot ? (
+  const sourceAuthorityForItem = (
+    item: DrawerItem,
+  ): DrawerPageAuthority | null => {
+    if (item === 'questions') return sourceModel.pages.questions;
+    if (item === 'closure') return sourceModel.pages.closure;
+    if (item === 'change-plan') return sourceModel.pages.changePlan;
+    if (item === 'bp-change-workspace') {
+      return sourceModel.pages.blueprintChangeWorkspace;
+    }
+    return null;
+  };
+
+  const renderQuestionsContent = () => {
+    const authority = sourceModel.pages.questions;
+    return (
+      <section className="wb-drawer-factual-page">
+        <DrawerSourceStatus authority={authority} copy={sourceBoundary} />
+        {authority.kind === 'unavailable' ? (
+          <DrawerUnavailableState
+            title={sourceBoundary.questionsNoLiveData}
+            detail={sourceBoundary.reasons[authority.reason]}
+          />
+        ) : (
+          <InvestigationQuestionMatrixPanel
+            snapshot={snapshot}
+            evidenceChains={investigation.evidenceChains}
+            graphDetail={context.graphDetail}
+            nodeEvidenceMap={investigation.nodeEvidenceMap}
+            queueItems={investigation.queueItems}
+            queueSessionNotes={investigation.sessionNotes}
+            investigationReview={investigation.investigationReview}
+            lastUpdatedAt={state.bridge.lastUpdatedAt}
+            questionMatrixState={investigation.questionMatrixState}
+            includeMockBtBlackboardQuestions={authority.kind === 'mock'}
+            noQuestionsText={
+              authority.kind === 'mock'
+                ? undefined
+                : sourceBoundary.questionsNoLiveData
+            }
+            onEntryUpdate={investigation.handleQuestionMatrixUpdate}
+            onReset={investigation.handleQuestionMatrixReset}
+          />
+        )}
+      </section>
+    );
+  };
+
+  const closureAuthority = sourceModel.pages.closure;
+  const renderClosureContent = () => (
+    <section className="wb-drawer-factual-page">
+      <DrawerSourceStatus authority={closureAuthority} copy={sourceBoundary} />
+      {closureAuthority.kind === 'mock' && snapshot ? (
+        <InfrastructureClosurePanel
+          snapshot={snapshot}
+          evidenceChains={investigation.evidenceChains}
+          graphDetail={context.graphDetail}
+          nodeEvidenceMap={investigation.nodeEvidenceMap}
+          queueItems={investigation.queueItems}
+          investigationReview={investigation.investigationReview}
+          questionMatrixState={investigation.questionMatrixState}
+          lastUpdatedAt={state.bridge.lastUpdatedAt}
+          closureState={investigation.closureState}
+          onClosureChange={investigation.handleClosureChange}
+          onReset={investigation.handleClosureReset}
+        />
+      ) : closureAuthority.kind === 'persisted-real' && sourceModel.persistedClosure ? (
+        <div className="wb-drawer-persisted-facts">
+          <h3>{sourceBoundary.persistedClosureTitle}</h3>
+          <dl className="wb-drawer-fact-list">
+            <div><dt>{sourceBoundary.sessionIdLabel}</dt><dd>{sourceModel.persistedClosure.sessionId}</dd></div>
+            <div><dt>{sourceBoundary.scopeLabel}</dt><dd>{sourceModel.persistedClosure.scope}</dd></div>
+            <div><dt>{sourceBoundary.stateLabel}</dt><dd>{sourceModel.persistedClosure.currentState}</dd></div>
+            <div><dt>{sourceBoundary.updatedAtLabel}</dt><dd>{sourceModel.persistedClosure.updatedAt}</dd></div>
+            <div><dt>{sourceBoundary.closedAtLabel}</dt><dd>{sourceModel.persistedClosure.closedAt ?? sourceBoundary.notRecordedLabel}</dd></div>
+            <div><dt>{sourceBoundary.closeReasonLabel}</dt><dd>{sourceModel.persistedClosure.closeReason ?? sourceBoundary.notRecordedLabel}</dd></div>
+            <div><dt>{sourceBoundary.targetAssetLabel}</dt><dd>{sourceModel.persistedClosure.targetAssetPath ?? sourceBoundary.notRecordedLabel}</dd></div>
+            <div><dt>{sourceBoundary.proposalCountLabel}</dt><dd>{sourceModel.persistedClosure.proposalCount}</dd></div>
+            <div><dt>{sourceBoundary.sandboxLabel}</dt><dd>{sourceModel.persistedClosure.hasSandbox ? sourceBoundary.yesLabel : sourceBoundary.noLabel}</dd></div>
+            <div><dt>{sourceBoundary.approvalLabel}</dt><dd>{sourceModel.persistedClosure.hasApproval ? sourceBoundary.yesLabel : sourceBoundary.noLabel}</dd></div>
+            <div><dt>{sourceBoundary.promoteLabel}</dt><dd>{sourceModel.persistedClosure.hasPromote ? sourceBoundary.yesLabel : sourceBoundary.noLabel}</dd></div>
+          </dl>
+        </div>
+      ) : (
+        <DrawerUnavailableState
+          title={sourceBoundary.closureUnavailableTitle}
+          detail={
+            closureAuthority.kind === 'mock'
+              ? copy.ueAgentUi.drawer.noContextDetail
+              : sourceBoundary.closureUnavailableDetail
+          }
+        />
+      )}
+    </section>
+  );
+
+  const changePlanAuthority = sourceModel.pages.changePlan;
+  const renderChangePlanContent = () => (
+    <section className="wb-drawer-factual-page">
+      <DrawerSourceStatus authority={changePlanAuthority} copy={sourceBoundary} />
+      {changePlanAuthority.kind === 'mock' ? (
+        <ChangePlanPackageWorkspace />
+      ) : changePlanAuthority.kind === 'persisted-real' ? (
+        <div className="wb-drawer-persisted-facts">
+          <h3>{sourceBoundary.persistedPlansTitle}</h3>
+          <div className="wb-drawer-proposal-list">
+            {sourceModel.persistedPlans.map(plan => (
+              <article
+                key={plan.proposalId}
+                className="wb-drawer-proposal"
+                data-proposal-id={plan.proposalId}
+              >
+                <dl className="wb-drawer-fact-list">
+                  <div><dt>{sourceBoundary.proposalIdLabel}</dt><dd>{plan.proposalId}</dd></div>
+                  <div><dt>{sourceBoundary.proposedAtLabel}</dt><dd>{plan.proposedAt}</dd></div>
+                  <div><dt>{sourceBoundary.kindLabel}</dt><dd>{plan.kind}</dd></div>
+                  <div><dt>{sourceBoundary.summaryLabel}</dt><dd>{plan.summary ?? sourceBoundary.notRecordedLabel}</dd></div>
+                  <div><dt>{sourceBoundary.diagnosisSummaryLabel}</dt><dd>{plan.diagnosisSummary ?? sourceBoundary.notRecordedLabel}</dd></div>
+                  <div><dt>{sourceBoundary.confidenceLabel}</dt><dd>{plan.confidence ?? sourceBoundary.notRecordedLabel}</dd></div>
+                  <div><dt>{sourceBoundary.riskLabel}</dt><dd>{plan.risk ?? sourceBoundary.notRecordedLabel}</dd></div>
+                  <div><dt>{sourceBoundary.operationKindLabel}</dt><dd>{plan.operationKind ?? sourceBoundary.notRecordedLabel}</dd></div>
+                  <div><dt>{sourceBoundary.escalationReasonLabel}</dt><dd>{plan.escalationReason ?? sourceBoundary.notRecordedLabel}</dd></div>
+                  <div><dt>{sourceBoundary.suggestedHumanActionLabel}</dt><dd>{plan.suggestedHumanAction ?? sourceBoundary.notRecordedLabel}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <DrawerUnavailableState
+          title={sourceBoundary.changePlanUnavailableTitle}
+          detail={sourceBoundary.changePlanUnavailableDetail}
+        />
+      )}
+    </section>
+  );
+
+  const blueprintWorkspaceAuthority =
+    sourceModel.pages.blueprintChangeWorkspace;
+  const renderBlueprintWorkspaceContent = () => (
+    <section className="wb-drawer-factual-page">
+      <DrawerSourceStatus
+        authority={blueprintWorkspaceAuthority}
+        copy={sourceBoundary}
+      />
+      {blueprintWorkspaceAuthority.kind === 'mock' ? (
+        <BlueprintChangeWorkspacePanel />
+      ) : (
+        <DrawerUnavailableState
+          title={sourceBoundary.blueprintWorkspaceUnavailableTitle}
+          detail={sourceBoundary.blueprintWorkspaceUnavailableDetail}
+        />
+      )}
+    </section>
+  );
+
+  const content =
+    drawer.activeDrawerItem === 'questions' ? (
+      renderQuestionsContent()
+    ) : drawer.activeDrawerItem === 'closure' ? (
+      renderClosureContent()
+    ) : drawer.activeDrawerItem === 'change-plan' ? (
+      renderChangePlanContent()
+    ) : drawer.activeDrawerItem === 'bp-change-workspace' ? (
+      renderBlueprintWorkspaceContent()
+    ) : !snapshot ? (
     <div className="wb-drawer-no-context">
       <strong>{copy.ueAgentUi.drawer.noContextTitle}</strong>
       <p>{copy.ueAgentUi.drawer.noContextDetail}</p>
@@ -183,20 +351,6 @@ export function DrawerPanel({
       capturedAt={snapshot.capturedAt}
       currentAssetSummary={investigation.currentAssetSummary}
     />
-  ) : drawer.activeDrawerItem === 'questions' ? (
-    <InvestigationQuestionMatrixPanel
-      snapshot={snapshot}
-      evidenceChains={investigation.evidenceChains}
-      graphDetail={context.graphDetail}
-      nodeEvidenceMap={investigation.nodeEvidenceMap}
-      queueItems={investigation.queueItems}
-      queueSessionNotes={investigation.sessionNotes}
-      investigationReview={investigation.investigationReview}
-      lastUpdatedAt={state.bridge.lastUpdatedAt}
-      questionMatrixState={investigation.questionMatrixState}
-      onEntryUpdate={investigation.handleQuestionMatrixUpdate}
-      onReset={investigation.handleQuestionMatrixReset}
-    />
   ) : drawer.activeDrawerItem === 'handoff' ? (
     <InvestigationHandoffPanel
       snapshot={snapshot}
@@ -214,24 +368,6 @@ export function DrawerPanel({
       closureState={investigation.closureState}
       sourceModel={handoffSourceModel}
     />
-  ) : drawer.activeDrawerItem === 'closure' ? (
-    <InfrastructureClosurePanel
-      snapshot={snapshot}
-      evidenceChains={investigation.evidenceChains}
-      graphDetail={context.graphDetail}
-      nodeEvidenceMap={investigation.nodeEvidenceMap}
-      queueItems={investigation.queueItems}
-      investigationReview={investigation.investigationReview}
-      questionMatrixState={investigation.questionMatrixState}
-      lastUpdatedAt={state.bridge.lastUpdatedAt}
-      closureState={investigation.closureState}
-      onClosureChange={investigation.handleClosureChange}
-      onReset={investigation.handleClosureReset}
-    />
-  ) : drawer.activeDrawerItem === 'change-plan' ? (
-    <ChangePlanPackageWorkspace />
-  ) : drawer.activeDrawerItem === 'bp-change-workspace' ? (
-    <BlueprintChangeWorkspacePanel />
   ) : (
     <div className="wb-empty">{copy.ueAgentUi.drawer.noContextDetail}</div>
   );
@@ -252,13 +388,14 @@ export function DrawerPanel({
         data-active-drawer-item={drawer.activeDrawerItem}
       >
         <div className="wb-drawer-header">
-          {snapshot ? (
-            <div
-              className="wb-drawer-tabs"
-              role="tablist"
-              aria-label={copy.ueAgentUi.drawer.dialogLabel}
-            >
-              {DRAWER_ITEM_IDS.map(id => (
+          <div
+            className="wb-drawer-tabs"
+            role="tablist"
+            aria-label={copy.ueAgentUi.drawer.dialogLabel}
+          >
+            {DRAWER_ITEM_IDS.map(id => {
+              const authority = sourceAuthorityForItem(id);
+              return (
                 <button
                   key={id}
                   ref={element => {
@@ -268,6 +405,7 @@ export function DrawerPanel({
                   type="button"
                   role="tab"
                   data-drawer-item={id}
+                  data-drawer-source-kind={authority?.kind}
                   className={drawer.activeDrawerItem === id ? 'wb-drawer-tab wb-drawer-tab-active' : 'wb-drawer-tab'}
                   tabIndex={drawer.activeDrawerItem === id ? 0 : -1}
                   aria-selected={drawer.activeDrawerItem === id}
@@ -275,13 +413,22 @@ export function DrawerPanel({
                   onKeyDown={event => handleTabKeyDown(event, id)}
                   onClick={() => activateDrawerItem(id)}
                 >
-                  {copy.ueAgentUi.drawer.items[id]}
+                  <span>{copy.ueAgentUi.drawer.items[id]}</span>
+                  {authority && (
+                    <span
+                      className={`wb-drawer-tab-source wb-drawer-source-badge-${authority.kind}`}
+                      aria-label={sourceBoundary.tabSourceAria(
+                        copy.ueAgentUi.drawer.items[id],
+                        sourceBoundary.kinds[authority.kind],
+                      )}
+                    >
+                      {sourceBoundary.kinds[authority.kind]}
+                    </span>
+                  )}
                 </button>
-              ))}
-            </div>
-          ) : (
-            <div className="wb-drawer-header-spacer" />
-          )}
+              );
+            })}
+          </div>
           <button
             ref={closeButtonRef}
             type="button"
@@ -295,12 +442,8 @@ export function DrawerPanel({
         <div
           id="workbench-drawer-content"
           className="wb-drawer-content"
-          role={snapshot ? 'tabpanel' : undefined}
-          aria-labelledby={
-            snapshot
-              ? `workbench-drawer-tab-${drawer.activeDrawerItem}`
-              : undefined
-          }
+          role="tabpanel"
+          aria-labelledby={`workbench-drawer-tab-${drawer.activeDrawerItem}`}
         >
           {content}
         </div>
