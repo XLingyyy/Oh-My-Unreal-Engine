@@ -354,12 +354,9 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
             aria-label={copy.ueAgentUi.rightInspector.overlayLabel}
           >
             <RightInspector
-              evidenceItems={state.inspector.evidence.items}
-              evidenceMode={state.inspector.evidence.mode}
-              changeItems={state.inspector.changes.items}
-              changesMode={state.inspector.changes.mode}
-              logEntries={state.inspector.logs.entries}
-              logsMode={state.inspector.logs.mode}
+              evidence={state.inspector.evidence}
+              changes={state.inspector.changes}
+              logs={state.inspector.logs}
             />
           </aside>
         </>
@@ -367,12 +364,9 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
     }
     return (
       <RightInspector
-        evidenceItems={state.inspector.evidence.items}
-        evidenceMode={state.inspector.evidence.mode}
-        changeItems={state.inspector.changes.items}
-        changesMode={state.inspector.changes.mode}
-        logEntries={state.inspector.logs.entries}
-        logsMode={state.inspector.logs.mode}
+        evidence={state.inspector.evidence}
+        changes={state.inspector.changes}
+        logs={state.inspector.logs}
       />
     );
   };

@@ -23,7 +23,7 @@ import {
   adaptLogEntries,
   buildInspectorData,
   type InspectorDataAdapterInput,
-  type InspectorPanelMode,
+  type InspectorSourceKind,
 } from '../renderer/components/workbench/inspectorDataAdapter';
 
 // ── Fixtures ────────────────────────────────────────────────────────
@@ -171,13 +171,14 @@ function baseInput(overrides?: Partial<InspectorDataAdapterInput>): InspectorDat
 
 // ── adaptEvidenceItems ──────────────────────────────────────────────
 
-test('adaptEvidenceItems: real mode, no session, no snapshot → empty array (NOT mock)', () => {
+test('adaptEvidenceItems: real mode, no session, no snapshot → unavailable', () => {
   const result = adaptEvidenceItems(baseInput());
   assert.equal(result.items.length, 0);
-  assert.equal(result.mode, 'empty');
+  assert.equal(result.source, 'unavailable');
+  assert.equal(result.updatedAt, null);
 });
 
-test('adaptEvidenceItems: real mode, session with compile errors → real evidence items', () => {
+test('adaptEvidenceItems: real mode, session with compile errors → live evidence items', () => {
   const compileIssue: CompileIssue = {
     code: 'CS1000',
     message: 'Missing function',
@@ -192,14 +193,14 @@ test('adaptEvidenceItems: real mode, session with compile errors → real eviden
     },
   });
   const result = adaptEvidenceItems(baseInput({ selectedSession: session }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   assert.ok(result.items.length > 0, 'should have evidence items from compile errors');
   const errorItem = result.items.find(i => i.status === 'error');
   assert.ok(errorItem, 'should have an error-status evidence item');
   assert.equal(errorItem!.assetName, 'BP_Player');
 });
 
-test('adaptEvidenceItems: real mode, session with errors → error evidence', () => {
+test('adaptEvidenceItems: real mode, session with errors → live evidence', () => {
   const errorRecord: AgentSessionErrorStoredRecord = {
     errorId: 'err-1',
     sessionId: 'asset-1',
@@ -214,13 +215,13 @@ test('adaptEvidenceItems: real mode, session with errors → error evidence', ()
     errors: [errorRecord],
   });
   const result = adaptEvidenceItems(baseInput({ selectedSession: session }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   const errorItem = result.items.find(i => i.status === 'error');
   assert.ok(errorItem, 'should have error evidence from session errors');
   assert.ok(errorItem!.finding.includes('Context unavailable'));
 });
 
-test('adaptEvidenceItems: real mode, snapshot compile errors → real evidence', () => {
+test('adaptEvidenceItems: real mode, snapshot compile errors → live evidence', () => {
   const snapshot = makeSnapshot({
     compileStatus: makeCompile({
       lastCompileResult: 'failed',
@@ -232,24 +233,24 @@ test('adaptEvidenceItems: real mode, snapshot compile errors → real evidence',
     }),
   });
   const result = adaptEvidenceItems(baseInput({ snapshot }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   assert.ok(result.items.length > 0, 'should have evidence from snapshot compile errors');
 });
 
 test('adaptEvidenceItems: mock mode → mock items', () => {
   const result = adaptEvidenceItems(baseInput({ isMockClient: true }));
-  assert.equal(result.mode, 'mock');
+  assert.equal(result.source, 'mock');
   assert.ok(result.items.length > 0, 'mock mode should produce mock items');
   assert.equal(result.items[0].assetName, 'IMC_Default');
 });
 
-test('adaptEvidenceItems: real mode, bridge error, no session → degraded mode', () => {
+test('adaptEvidenceItems: real mode, bridge error, no data → unavailable', () => {
   const result = adaptEvidenceItems(baseInput({
     bridgeError: 'Bridge unreachable',
     snapshot: null,
     selectedSession: null,
   }));
-  assert.equal(result.mode, 'degraded');
+  assert.equal(result.source, 'unavailable');
   assert.equal(result.items.length, 0);
 });
 
@@ -259,26 +260,40 @@ test('adaptEvidenceItems: real mode NEVER falls back to mock', () => {
     selectedSession: null,
     snapshot: null,
   }));
-  assert.notEqual(result.mode, 'mock');
+  assert.notEqual(result.source, 'mock');
   assert.equal(result.items.length, 0);
+});
+
+test('adaptEvidenceItems: real mode, bridge error WITH data → cache, items retained', () => {
+  const session = makeAssetSession({
+    currentState: 'done',
+    errors: [{ errorId: 'e1', sessionId: 'asset-1', scope: 'asset', errorCode: 'test', message: 'err', recoverable: true, createdAt: FIXTURE_TS }],
+  });
+  const result = adaptEvidenceItems(baseInput({
+    selectedSession: session,
+    bridgeError: 'Bridge unreachable',
+  }));
+  assert.equal(result.source, 'cache');
+  assert.ok(result.items.length > 0, 'items retained in cache');
+  assert.equal(result.updatedAt, FIXTURE_TS);
 });
 
 // ── adaptChangeItems ────────────────────────────────────────────────
 
-test('adaptChangeItems: real mode, no session → empty array (NOT mock)', () => {
+test('adaptChangeItems: real mode, no session → unavailable', () => {
   const result = adaptChangeItems(baseInput());
   assert.equal(result.items.length, 0);
-  assert.equal(result.mode, 'empty');
+  assert.equal(result.source, 'unavailable');
 });
 
-test('adaptChangeItems: real mode, project session → empty (project is read-only)', () => {
+test('adaptChangeItems: real mode, project session → live but empty items', () => {
   const session = makeProjectSession({ currentState: 'diagnosing' });
   const result = adaptChangeItems(baseInput({ selectedSession: session }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   assert.equal(result.items.length, 0);
 });
 
-test('adaptChangeItems: real mode, asset session with promote → promoted change item', () => {
+test('adaptChangeItems: real mode, asset session with promote → live promoted change item', () => {
   const session = makeAssetSession({
     currentState: 'done',
     promote: {
@@ -287,7 +302,7 @@ test('adaptChangeItems: real mode, asset session with promote → promoted chang
     },
   });
   const result = adaptChangeItems(baseInput({ selectedSession: session }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   const promoted = result.items.find(i => i.stage === 'promoted');
   assert.ok(promoted, 'should have a promoted change item');
   assert.equal(promoted!.status, 'applied');
@@ -304,21 +319,34 @@ test('adaptChangeItems: real mode, asset session with sandbox → sandbox-applie
     },
   });
   const result = adaptChangeItems(baseInput({ selectedSession: session }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   const sandbox = result.items.find(i => i.stage === 'sandbox-applied');
   assert.ok(sandbox, 'should have a sandbox-applied change item');
 });
 
 test('adaptChangeItems: mock mode → mock items', () => {
   const result = adaptChangeItems(baseInput({ isMockClient: true }));
-  assert.equal(result.mode, 'mock');
+  assert.equal(result.source, 'mock');
   assert.ok(result.items.length > 0);
 });
 
-test('adaptChangeItems: real mode, bridge error → degraded', () => {
+test('adaptChangeItems: real mode, bridge error no data → unavailable', () => {
   const result = adaptChangeItems(baseInput({ bridgeError: 'Bridge unreachable' }));
-  assert.equal(result.mode, 'degraded');
+  assert.equal(result.source, 'unavailable');
   assert.equal(result.items.length, 0);
+});
+
+test('adaptChangeItems: real mode, bridge error WITH data → cache', () => {
+  const session = makeAssetSession({
+    currentState: 'done',
+    promote: {
+      applyResultJson: '{"ok":true}',
+      promotedAt: FIXTURE_TS,
+    },
+  });
+  const result = adaptChangeItems(baseInput({ selectedSession: session, bridgeError: 'Bridge unreachable' }));
+  assert.equal(result.source, 'cache');
+  assert.ok(result.items.length > 0, 'items retained in cache');
 });
 
 test('adaptChangeItems: real mode NEVER falls back to mock', () => {
@@ -326,19 +354,19 @@ test('adaptChangeItems: real mode NEVER falls back to mock', () => {
     isMockClient: false,
     selectedSession: null,
   }));
-  assert.notEqual(result.mode, 'mock');
+  assert.notEqual(result.source, 'mock');
   assert.equal(result.items.length, 0);
 });
 
 // ── adaptLogEntries ─────────────────────────────────────────────────
 
-test('adaptLogEntries: real mode, no session, no snapshot → empty (NOT mock)', () => {
+test('adaptLogEntries: real mode, no session, no snapshot → unavailable', () => {
   const result = adaptLogEntries(baseInput());
   assert.equal(result.entries.length, 0);
-  assert.equal(result.mode, 'empty');
+  assert.equal(result.source, 'unavailable');
 });
 
-test('adaptLogEntries: real mode, snapshot recentLogs → real log entries', () => {
+test('adaptLogEntries: real mode, snapshot recentLogs → live log entries', () => {
   const logEntry: LogEntry = {
     timestamp: FIXTURE_TS,
     category: 'LogBlueprint',
@@ -347,14 +375,14 @@ test('adaptLogEntries: real mode, snapshot recentLogs → real log entries', () 
   };
   const snapshot = makeSnapshot({ recentLogs: [logEntry] });
   const result = adaptLogEntries(baseInput({ snapshot }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   assert.ok(result.entries.length > 0, 'should have log entries from snapshot');
   const entry = result.entries.find(e => e.level === 'error');
   assert.ok(entry, 'should have an error-level log entry');
   assert.ok(entry!.message.includes('Compile failed'));
 });
 
-test('adaptLogEntries: real mode, session events → real log entries from events', () => {
+test('adaptLogEntries: real mode, session events → live log entries from events', () => {
   const session = makeAssetSession({ currentState: 'diagnosing' });
   const events = [
     {
@@ -378,7 +406,7 @@ test('adaptLogEntries: real mode, session events → real log entries from event
     } as const,
   ];
   const result = adaptLogEntries(baseInput({ selectedSession: session, selectedEvents: events }));
-  assert.equal(result.mode, 'real');
+  assert.equal(result.source, 'live');
   assert.ok(result.entries.length > 0, 'should have log entries from events');
   const stateLog = result.entries.find(e => e.source === 'agent-state');
   assert.ok(stateLog, 'should have agent-state log from state event');
@@ -388,14 +416,28 @@ test('adaptLogEntries: real mode, session events → real log entries from event
 
 test('adaptLogEntries: mock mode → mock entries', () => {
   const result = adaptLogEntries(baseInput({ isMockClient: true }));
-  assert.equal(result.mode, 'mock');
+  assert.equal(result.source, 'mock');
   assert.ok(result.entries.length > 0);
 });
 
-test('adaptLogEntries: real mode, bridge error → degraded', () => {
+test('adaptLogEntries: real mode, bridge error no data → unavailable', () => {
   const result = adaptLogEntries(baseInput({ bridgeError: 'Bridge unreachable' }));
-  assert.equal(result.mode, 'degraded');
+  assert.equal(result.source, 'unavailable');
   assert.equal(result.entries.length, 0);
+});
+
+test('adaptLogEntries: real mode, bridge error WITH data → cache, entries retained', () => {
+  const logEntry: LogEntry = {
+    timestamp: FIXTURE_TS,
+    category: 'LogBlueprint',
+    verbosity: 'error',
+    message: 'Test',
+  };
+  const snapshot = makeSnapshot({ recentLogs: [logEntry] });
+  const result = adaptLogEntries(baseInput({ snapshot, bridgeError: 'Bridge unreachable' }));
+  assert.equal(result.source, 'cache');
+  assert.ok(result.entries.length > 0, 'entries retained in cache');
+  assert.equal(result.updatedAt, FIXTURE_TS);
 });
 
 test('adaptLogEntries: real mode NEVER falls back to mock', () => {
@@ -404,17 +446,17 @@ test('adaptLogEntries: real mode NEVER falls back to mock', () => {
     selectedSession: null,
     snapshot: null,
   }));
-  assert.notEqual(result.mode, 'mock');
+  assert.notEqual(result.source, 'mock');
   assert.equal(result.entries.length, 0);
 });
 
 // ── buildInspectorData (integration) ────────────────────────────────
 
-test('buildInspectorData: real mode idle → all panels empty (NOT mock)', () => {
+test('buildInspectorData: real mode idle → all panels unavailable', () => {
   const data = buildInspectorData(baseInput());
-  assert.equal(data.evidence.mode, 'empty');
-  assert.equal(data.changes.mode, 'empty');
-  assert.equal(data.logs.mode, 'empty');
+  assert.equal(data.evidence.source, 'unavailable');
+  assert.equal(data.changes.source, 'unavailable');
+  assert.equal(data.logs.source, 'unavailable');
   assert.equal(data.evidence.items.length, 0);
   assert.equal(data.changes.items.length, 0);
   assert.equal(data.logs.entries.length, 0);
@@ -422,22 +464,45 @@ test('buildInspectorData: real mode idle → all panels empty (NOT mock)', () =>
 
 test('buildInspectorData: mock mode → all panels mock', () => {
   const data = buildInspectorData(baseInput({ isMockClient: true }));
-  assert.equal(data.evidence.mode, 'mock');
-  assert.equal(data.changes.mode, 'mock');
-  assert.equal(data.logs.mode, 'mock');
+  assert.equal(data.evidence.source, 'mock');
+  assert.equal(data.changes.source, 'mock');
+  assert.equal(data.logs.source, 'mock');
   assert.ok(data.evidence.items.length > 0);
   assert.ok(data.changes.items.length > 0);
   assert.ok(data.logs.entries.length > 0);
 });
 
-test('buildInspectorData: bridge error → all panels degraded', () => {
+test('buildInspectorData: bridge error no data → all panels unavailable', () => {
   const data = buildInspectorData(baseInput({ bridgeError: 'Bridge unreachable' }));
-  assert.equal(data.evidence.mode, 'degraded');
-  assert.equal(data.changes.mode, 'degraded');
-  assert.equal(data.logs.mode, 'degraded');
+  assert.equal(data.evidence.source, 'unavailable');
+  assert.equal(data.changes.source, 'unavailable');
+  assert.equal(data.logs.source, 'unavailable');
 });
 
-test('buildInspectorData: real mode with session and snapshot → real data', () => {
+test('buildInspectorData: bridge error WITH data → all panels cache', () => {
+  const session = makeAssetSession({
+    currentState: 'done',
+    promote: {
+      applyResultJson: '{"ok":true}',
+      promotedAt: FIXTURE_TS,
+    },
+  });
+  const snapshot = makeSnapshot({
+    recentLogs: [
+      { timestamp: FIXTURE_TS, category: 'LogBlueprint', verbosity: 'log', message: 'Ok' },
+    ],
+  });
+  const data = buildInspectorData(baseInput({
+    selectedSession: session,
+    snapshot,
+    bridgeError: 'Bridge unreachable',
+  }));
+  assert.equal(data.evidence.source, 'cache');
+  assert.equal(data.changes.source, 'cache');
+  assert.equal(data.logs.source, 'cache');
+});
+
+test('buildInspectorData: real mode with session and snapshot → live data', () => {
   const session = makeAssetSession({
     currentState: 'done',
     promote: {
@@ -451,21 +516,44 @@ test('buildInspectorData: real mode with session and snapshot → real data', ()
     ],
   });
   const data = buildInspectorData(baseInput({ selectedSession: session, snapshot }));
-  assert.equal(data.evidence.mode, 'real');
-  assert.equal(data.changes.mode, 'real');
-  assert.equal(data.logs.mode, 'real');
+  assert.equal(data.evidence.source, 'live');
+  assert.equal(data.changes.source, 'live');
+  assert.equal(data.logs.source, 'live');
 });
 
-test('buildInspectorData: AUI-P1-01 regression — real mode no session does NOT show mock evidence', () => {
+test('buildInspectorData: AUI-P1-01 regression — real mode no session does NOT show mock', () => {
   const data = buildInspectorData(baseInput({
     isMockClient: false,
     selectedSession: null,
     snapshot: null,
   }));
-  assert.notEqual(data.evidence.mode, 'mock');
+  assert.notEqual(data.evidence.source, 'mock');
   assert.equal(data.evidence.items.length, 0);
-  assert.notEqual(data.changes.mode, 'mock');
+  assert.notEqual(data.changes.source, 'mock');
   assert.equal(data.changes.items.length, 0);
-  assert.notEqual(data.logs.mode, 'mock');
+  assert.notEqual(data.logs.source, 'mock');
   assert.equal(data.logs.entries.length, 0);
+});
+
+// ── UpdatedAt timestamp tests ────────────────────────────────────────
+
+test('updatedAt: live mode has timestamp from available sources', () => {
+  const session = makeAssetSession({ updatedAt: FIXTURE_TS });
+  const result = adaptEvidenceItems(baseInput({ selectedSession: session }));
+  assert.equal(result.source, 'live');
+  assert.equal(result.updatedAt, FIXTURE_TS);
+});
+
+test('updatedAt: mock mode has null timestamp', () => {
+  const data = buildInspectorData(baseInput({ isMockClient: true }));
+  assert.equal(data.evidence.updatedAt, null);
+  assert.equal(data.changes.updatedAt, null);
+  assert.equal(data.logs.updatedAt, null);
+});
+
+test('updatedAt: unavailable mode has null timestamp', () => {
+  const data = buildInspectorData(baseInput());
+  assert.equal(data.evidence.updatedAt, null);
+  assert.equal(data.changes.updatedAt, null);
+  assert.equal(data.logs.updatedAt, null);
 });

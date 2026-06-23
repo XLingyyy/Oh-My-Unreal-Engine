@@ -548,10 +548,25 @@ export interface UeAgentUiCopy {
     degradedBody: string;
     errorTitle: string;
     errorBody: string;
-    evidence: {
-      title: string;
-      subtitle: (n: number) => string;
-      emptyBody: string;
+    sourceLabelLive: string;
+    sourceLabelCache: string;
+    sourceLabelMock: string;
+    sourceLabelUnavailable: string;
+    sourceDetailLive: string;
+    sourceDetailCache: string;
+    sourceDetailMock: string;
+    sourceDetailUnavailable: string;
+    updatedAtLabel: (ts: string) => string;
+    noLiveUpdateTime: string;
+    cacheStaleNotice: string;
+    mockOnlyDevNotice: string;
+      evidence: {
+        title: string;
+        subtitle: (n: number) => string;
+        emptyBody: string;
+        emptyBodyMock: string;
+        emptyBodyLiveCache: string;
+        emptyBodyUnavailable: string;
       statusNormal: string;
       statusWarning: string;
       statusError: string;
@@ -585,10 +600,13 @@ export interface UeAgentUiCopy {
         };
       };
     };
-    changes: {
-      title: string;
-      subtitle: string;
-      emptyBody: string;
+      changes: {
+        title: string;
+        subtitle: (n: number) => string;
+        emptyBody: string;
+        emptyBodyMock: string;
+        emptyBodyLiveCache: string;
+        emptyBodyUnavailable: string;
       stage_before: string;
       stage_preview: string;
       stage_sandbox_applied: string;
@@ -613,10 +631,13 @@ export interface UeAgentUiCopy {
         };
       };
     };
-    logs: {
-      title: string;
-      subtitle: (n: number) => string;
-      emptyBody: string;
+      logs: {
+        title: string;
+        subtitle: (n: number) => string;
+        emptyBody: string;
+        emptyBodyMock: string;
+        emptyBodyLiveCache: string;
+        emptyBodyUnavailable: string;
       developerModeLabel: string;
       levelInfo: string;
       levelWarn: string;

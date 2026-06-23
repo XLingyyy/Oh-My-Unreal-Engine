@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { AgentUiLogEntry } from '@omue/shared-protocol';
 import { useDesktopCopy } from '../../i18n';
 import { AdvancedInspector } from './AdvancedInspector';
-import type { InspectorPanelMode } from './inspectorDataAdapter';
+import { InspectorSourceStatus } from './InspectorSourceStatus';
+import type { InspectorSourceKind } from './inspectorDataAdapter';
 
 export interface LogsPanelProps {
   entries: AgentUiLogEntry[];
-  mode: InspectorPanelMode;
+  source: InspectorSourceKind;
+  updatedAt: string | null;
   developerMode?: boolean;
   onDeveloperModeChange?: (value: boolean) => void;
 }
@@ -30,7 +32,8 @@ function sourceKey(source: AgentUiLogEntry['source']): 'sourceToolCall' | 'sourc
 
 export function LogsPanel({
   entries,
-  mode,
+  source,
+  updatedAt,
   developerMode = false,
   onDeveloperModeChange,
 }: LogsPanelProps) {
@@ -38,7 +41,13 @@ export function LogsPanel({
   const t = copy.ueAgentUi.rightInspector.logs;
   const [openPayload, setOpenPayload] = useState<Set<string>>(() => new Set());
 
-  const showDevControls = typeof onDeveloperModeChange === 'function';
+  const showDevControls = source === 'mock' && typeof onDeveloperModeChange === 'function';
+
+  useEffect(() => {
+    if (source !== 'mock' && typeof onDeveloperModeChange === 'function') {
+      onDeveloperModeChange(false);
+    }
+  }, [source, onDeveloperModeChange]);
 
   const togglePayload = (id: string) => {
     setOpenPayload((prev) => {
@@ -51,6 +60,7 @@ export function LogsPanel({
 
   return (
     <div className="ue-inspector-pane">
+      <InspectorSourceStatus source={source} updatedAt={updatedAt} />
       {showDevControls && (
         <div className="ue-inspector-dev-toggle-row">
           <label className="ue-inspector-dev-toggle">
@@ -59,20 +69,22 @@ export function LogsPanel({
               checked={developerMode}
               onChange={(event) => onDeveloperModeChange!(event.target.checked)}
             />
-            <span>{t.developerModeLabel}</span>
+            <span data-inspector-mock-dev="true">{t.developerModeLabel}</span>
           </label>
+          <span className="ue-inspector-mock-only-note" data-inspector-mock-dev="true">
+            {copy.ueAgentUi.rightInspector.mockOnlyDevNotice}
+          </span>
         </div>
       )}
-      {developerMode && <AdvancedInspector />}
-      {mode === 'degraded' ? (
-        <div className="ue-inspector-empty ue-inspector-degraded">
-          <p className="ue-inspector-empty-title">{copy.ueAgentUi.rightInspector.degradedTitle}</p>
-          <p className="ue-inspector-empty-body">{copy.ueAgentUi.rightInspector.degradedBody}</p>
-        </div>
-      ) : entries.length === 0 ? (
+      {showDevControls && developerMode && <AdvancedInspector />}
+      {entries.length === 0 ? (
         <div className="ue-inspector-empty">
           <p className="ue-inspector-empty-title">{copy.ueAgentUi.rightInspector.emptyTitle}</p>
-          <p className="ue-inspector-empty-body">{t.emptyBody}</p>
+          <p className="ue-inspector-empty-body">
+            {source === 'unavailable' ? t.emptyBodyUnavailable :
+             source === 'mock' ? t.emptyBodyMock :
+             t.emptyBodyLiveCache}
+          </p>
         </div>
       ) : (
         <>

@@ -1,10 +1,12 @@
 import type { ChangeItem } from '@omue/shared-protocol';
 import { useDesktopCopy } from '../../i18n';
-import type { InspectorPanelMode } from './inspectorDataAdapter';
+import type { InspectorSourceKind } from './inspectorDataAdapter';
+import { InspectorSourceStatus } from './InspectorSourceStatus';
 
 export interface ChangesPanelProps {
   items: ChangeItem[];
-  mode: InspectorPanelMode;
+  source: InspectorSourceKind;
+  updatedAt: string | null;
 }
 
 type StageKey = 'before' | 'preview' | 'sandbox-applied' | 'promoted';
@@ -24,24 +26,22 @@ function changeKindKey(kind: ChangeItem['changes'][number]['kind']): 'kindAdd' |
   return 'kindModify';
 }
 
-export function ChangesPanel({ items, mode }: ChangesPanelProps) {
+export function ChangesPanel({ items, source, updatedAt }: ChangesPanelProps) {
   const { copy } = useDesktopCopy();
   const t = copy.ueAgentUi.rightInspector.changes;
 
-  if (mode === 'degraded') {
-    return (
-      <div className="ue-inspector-empty ue-inspector-degraded">
-        <p className="ue-inspector-empty-title">{copy.ueAgentUi.rightInspector.degradedTitle}</p>
-        <p className="ue-inspector-empty-body">{copy.ueAgentUi.rightInspector.degradedBody}</p>
-      </div>
-    );
-  }
-
   if (items.length === 0) {
+    const emptyBody =
+      source === 'unavailable' ? t.emptyBodyUnavailable :
+      source === 'mock' ? t.emptyBodyMock :
+      t.emptyBodyLiveCache;
     return (
-      <div className="ue-inspector-empty">
-        <p className="ue-inspector-empty-title">{copy.ueAgentUi.rightInspector.emptyTitle}</p>
-        <p className="ue-inspector-empty-body">{t.emptyBody}</p>
+      <div className="ue-inspector-pane">
+        <InspectorSourceStatus source={source} updatedAt={updatedAt} />
+        <div className="ue-inspector-empty">
+          <p className="ue-inspector-empty-title">{copy.ueAgentUi.rightInspector.emptyTitle}</p>
+          <p className="ue-inspector-empty-body">{emptyBody}</p>
+        </div>
       </div>
     );
   }
@@ -56,9 +56,10 @@ export function ChangesPanel({ items, mode }: ChangesPanelProps) {
 
   return (
     <div className="ue-inspector-pane">
+      <InspectorSourceStatus source={source} updatedAt={updatedAt} />
       <header className="ue-inspector-pane-header">
         <h3 className="ue-inspector-pane-title">{t.title}</h3>
-        <p className="ue-inspector-pane-subtitle">{t.subtitle}</p>
+        <p className="ue-inspector-pane-subtitle">{t.subtitle(items.length)}</p>
       </header>
       <ol className="ue-inspector-changes-stages">
         {STAGE_ORDER.map((stage) => {

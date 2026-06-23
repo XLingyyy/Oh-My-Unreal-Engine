@@ -4,7 +4,7 @@ import { useDesktopCopy } from '../../i18n';
 import { EvidencePanel } from './EvidencePanel';
 import { ChangesPanel } from './ChangesPanel';
 import { LogsPanel } from './LogsPanel';
-import type { InspectorPanelMode } from './inspectorDataAdapter';
+import type { InspectorSourceKind } from './inspectorDataAdapter';
 
 type InspectorTab = 'evidence' | 'changes' | 'logs';
 
@@ -40,21 +40,15 @@ function getRelativeTab(tab: InspectorTab, direction: 1 | -1): InspectorTab {
 }
 
 export interface RightInspectorProps {
-  evidenceItems: EvidenceItem[];
-  evidenceMode: InspectorPanelMode;
-  changeItems: ChangeItem[];
-  changesMode: InspectorPanelMode;
-  logEntries: AgentUiLogEntry[];
-  logsMode: InspectorPanelMode;
+  evidence: { items: EvidenceItem[]; source: InspectorSourceKind; updatedAt: string | null };
+  changes: { items: ChangeItem[]; source: InspectorSourceKind; updatedAt: string | null };
+  logs: { entries: AgentUiLogEntry[]; source: InspectorSourceKind; updatedAt: string | null };
 }
 
 export function RightInspector({
-  evidenceItems,
-  evidenceMode,
-  changeItems,
-  changesMode,
-  logEntries,
-  logsMode,
+  evidence,
+  changes,
+  logs,
 }: RightInspectorProps) {
   const { copy } = useDesktopCopy();
   const inspectorCopy = copy.ueAgentUi.rightInspector;
@@ -67,7 +61,6 @@ export function RightInspector({
   const panelRefs = useRef<Record<InspectorTab, HTMLDivElement | null>>(createEmptyPanelMap());
   const scrollPositions = useRef<Record<InspectorTab, number>>(createEmptyScrollMap());
 
-  // Inspector-local developer mode only; persisted settings are handled separately.
   const [developerMode, setDeveloperMode] = useState(false);
 
   useEffect(() => {
@@ -188,15 +181,24 @@ export function RightInspector({
             className="ue-inspector-content"
           >
             {tab === 'evidence' && (
-              <EvidencePanel items={evidenceItems} mode={evidenceMode} />
+              <EvidencePanel
+                items={evidence.items}
+                source={evidence.source}
+                updatedAt={evidence.updatedAt}
+              />
             )}
             {tab === 'changes' && (
-              <ChangesPanel items={changeItems} mode={changesMode} />
+              <ChangesPanel
+                items={changes.items}
+                source={changes.source}
+                updatedAt={changes.updatedAt}
+              />
             )}
             {tab === 'logs' && (
               <LogsPanel
-                entries={logEntries}
-                mode={logsMode}
+                entries={logs.entries}
+                source={logs.source}
+                updatedAt={logs.updatedAt}
                 developerMode={developerMode}
                 onDeveloperModeChange={setDeveloperMode}
               />

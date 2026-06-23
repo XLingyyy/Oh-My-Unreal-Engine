@@ -14,17 +14,24 @@ import { isAssetSession } from '@omue/shared-protocol';
 import { buildMockChangeItems, buildMockEvidenceItems, buildMockLogEntries } from './mockInspectorData';
 import type { UeAgentUiCopy } from '../../i18n/types';
 
-export type InspectorPanelMode = 'real' | 'mock' | 'empty' | 'degraded';
+export type InspectorSourceKind =
+  | 'live'
+  | 'cache'
+  | 'mock'
+  | 'unavailable';
 
 export interface InspectorPanelData<T> {
   items: T[];
-  mode: InspectorPanelMode;
+  source: InspectorSourceKind;
+  updatedAt: string | null;
 }
 
 export type EvidencePanelData = InspectorPanelData<EvidenceItem>;
 export type ChangesPanelData = InspectorPanelData<ChangeItem>;
 export type LogsPanelData = Omit<InspectorPanelData<AgentUiLogEntry>, 'items'> & {
   entries: AgentUiLogEntry[];
+  source: InspectorSourceKind;
+  updatedAt: string | null;
 };
 
 export interface InspectorData {
@@ -96,19 +103,72 @@ export interface InspectorDataAdapterInput {
   mockLogTexts: UeAgentUiCopy['rightInspector']['logs']['texts'];
 }
 
-function resolveMode(
+function resolveSource(
   isMockClient: boolean,
   hasRealDataSource: boolean,
   bridgeError: string | null,
-): InspectorPanelMode {
+): InspectorSourceKind {
   if (isMockClient) return 'mock';
-  if (bridgeError && !hasRealDataSource) return 'degraded';
-  if (hasRealDataSource) return 'real';
-  return 'empty';
+  if (hasRealDataSource && !bridgeError) return 'live';
+  if (hasRealDataSource && bridgeError) return 'cache';
+  return 'unavailable';
 }
 
 function hasRealDataSource(input: InspectorDataAdapterInput): boolean {
   return input.selectedSession !== null || input.snapshot !== null;
+}
+
+function isValidTimestamp(ts: string | undefined | null): ts is string {
+  if (typeof ts !== 'string' || ts.length === 0) return false;
+  const parsed = Date.parse(ts);
+  return !Number.isNaN(parsed) && isFinite(parsed);
+}
+
+function latestValidTimestamp(candidates: (string | undefined | null)[]): string | null {
+  let best: string | null = null;
+  let bestMs = -Infinity;
+  for (const c of candidates) {
+    if (!isValidTimestamp(c)) continue;
+    const ms = Date.parse(c);
+    if (ms > bestMs) {
+      bestMs = ms;
+      best = c;
+    }
+  }
+  return best;
+}
+
+function resolveEvidenceUpdatedAt(
+  input: InspectorDataAdapterInput,
+  sessionHasItems: boolean,
+  snapshotHasItems: boolean,
+): string | null {
+  if (sessionHasItems) {
+    const t = input.selectedSession?.updatedAt;
+    return isValidTimestamp(t) ? t : null;
+  }
+  if (!sessionHasItems && snapshotHasItems) {
+    const t = input.snapshot?.capturedAt;
+    return isValidTimestamp(t) ? t : null;
+  }
+  const candidates: (string | undefined | null)[] = [];
+  if (input.selectedSession?.updatedAt) {
+    candidates.push(input.selectedSession.updatedAt);
+  }
+  if (input.snapshot?.capturedAt) {
+    candidates.push(input.snapshot.capturedAt);
+  }
+  return latestValidTimestamp(candidates);
+}
+
+function resolveChangesUpdatedAt(input: InspectorDataAdapterInput): string | null {
+  if (!input.selectedSession?.updatedAt) return null;
+  return isValidTimestamp(input.selectedSession.updatedAt) ? input.selectedSession.updatedAt : null;
+}
+
+function resolveLogsUpdatedAt(entries: { timestamp: string }[]): string | null {
+  const candidates = entries.map(e => e.timestamp);
+  return latestValidTimestamp(candidates);
 }
 
 function targetAssetName(session: RepairSessionRecord | null): string {
@@ -138,11 +198,14 @@ function adaptEvidenceItems(input: InspectorDataAdapterInput): EvidencePanelData
   if (input.isMockClient) {
     return {
       items: buildMockEvidenceItems(input.mockEvidenceTexts),
-      mode: 'mock',
+      source: 'mock',
+      updatedAt: null,
     };
   }
 
   const items: EvidenceItem[] = [];
+  let sessionHasItems = false;
+  let snapshotHasItems = false;
   const session = input.selectedSession;
   const snapshot = input.snapshot;
 
@@ -160,6 +223,7 @@ function adaptEvidenceItems(input: InspectorDataAdapterInput): EvidencePanelData
           finding: error.message,
         });
       }
+      sessionHasItems = true;
     }
 
     if (isAssetSession(session) && session.contextSnapshot) {
@@ -168,6 +232,7 @@ function adaptEvidenceItems(input: InspectorDataAdapterInput): EvidencePanelData
         for (const issue of ctx.compileIssues) {
           items.push(mapCompileIssueToEvidence(issue, assetName, session.targetAssetPath));
         }
+        sessionHasItems = true;
       }
 
       if (ctx.blueprintSummary && ctx.blueprintSummary.dirtyState === 'Dirty') {
@@ -178,6 +243,7 @@ function adaptEvidenceItems(input: InspectorDataAdapterInput): EvidencePanelData
           status: 'warning',
           finding: `Blueprint ${assetName} has uncommitted changes`,
         });
+        sessionHasItems = true;
       }
     }
   }
@@ -190,6 +256,7 @@ function adaptEvidenceItems(input: InspectorDataAdapterInput): EvidencePanelData
       for (const issue of compileStatus.lastErrors) {
         items.push(mapCompileIssueToEvidence(issue, assetName, assetPath));
       }
+      snapshotHasItems = true;
     }
 
     if (snapshot.currentAsset && snapshot.currentAsset.isDirty) {
@@ -200,12 +267,19 @@ function adaptEvidenceItems(input: InspectorDataAdapterInput): EvidencePanelData
         status: 'warning',
         finding: `Asset ${snapshot.currentAsset.assetName} has uncommitted changes`,
       });
+      snapshotHasItems = true;
     }
   }
 
+  const source = resolveSource(input.isMockClient, hasRealDataSource(input), input.bridgeError);
+  const updatedAt = source === 'mock' || source === 'unavailable'
+    ? null
+    : resolveEvidenceUpdatedAt(input, sessionHasItems, snapshotHasItems);
+
   return {
     items,
-    mode: resolveMode(input.isMockClient, hasRealDataSource(input), input.bridgeError),
+    source,
+    updatedAt,
   };
 }
 
@@ -213,7 +287,8 @@ function adaptChangeItems(input: InspectorDataAdapterInput): ChangesPanelData {
   if (input.isMockClient) {
     return {
       items: buildMockChangeItems(input.mockChangeTexts),
-      mode: 'mock',
+      source: 'mock',
+      updatedAt: null,
     };
   }
 
@@ -266,9 +341,13 @@ function adaptChangeItems(input: InspectorDataAdapterInput): ChangesPanelData {
     }
   }
 
+  const source = resolveSource(input.isMockClient, hasRealDataSource(input), input.bridgeError);
+  const updatedAt = source === 'mock' || source === 'unavailable' ? null : resolveChangesUpdatedAt(input);
+
   return {
     items,
-    mode: resolveMode(input.isMockClient, hasRealDataSource(input), input.bridgeError),
+    source,
+    updatedAt,
   };
 }
 
@@ -379,7 +458,8 @@ function adaptLogEntries(input: InspectorDataAdapterInput): LogsPanelData {
   if (input.isMockClient) {
     return {
       entries: buildMockLogEntries(input.mockLogTexts),
-      mode: 'mock',
+      source: 'mock',
+      updatedAt: null,
     };
   }
 
@@ -402,9 +482,13 @@ function adaptLogEntries(input: InspectorDataAdapterInput): LogsPanelData {
 
   entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
+  const source = resolveSource(input.isMockClient, hasRealDataSource(input), input.bridgeError);
+  const updatedAt = source === 'mock' || source === 'unavailable' ? null : resolveLogsUpdatedAt(entries);
+
   return {
     entries,
-    mode: resolveMode(input.isMockClient, hasRealDataSource(input), input.bridgeError),
+    source,
+    updatedAt,
   };
 }
 

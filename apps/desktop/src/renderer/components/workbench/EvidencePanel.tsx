@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import type { EvidenceItem } from '@omue/shared-protocol';
 import { useDesktopCopy } from '../../i18n';
-import type { InspectorPanelMode } from './inspectorDataAdapter';
+import type { InspectorSourceKind } from './inspectorDataAdapter';
+import { InspectorSourceStatus } from './InspectorSourceStatus';
 
 export interface EvidencePanelProps {
   items: EvidenceItem[];
-  mode: InspectorPanelMode;
+  source: InspectorSourceKind;
+  updatedAt: string | null;
 }
 
 function statusLabelKey(status: EvidenceItem['status']): 'statusNormal' | 'statusWarning' | 'statusError' {
@@ -14,26 +16,24 @@ function statusLabelKey(status: EvidenceItem['status']): 'statusNormal' | 'statu
   return 'statusNormal';
 }
 
-export function EvidencePanel({ items, mode }: EvidencePanelProps) {
+export function EvidencePanel({ items, source, updatedAt }: EvidencePanelProps) {
   const { copy } = useDesktopCopy();
   const t = copy.ueAgentUi.rightInspector;
   const evidence = t.evidence;
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
-  if (mode === 'degraded') {
-    return (
-      <div className="ue-inspector-empty ue-inspector-degraded">
-        <p className="ue-inspector-empty-title">{t.degradedTitle}</p>
-        <p className="ue-inspector-empty-body">{t.degradedBody}</p>
-      </div>
-    );
-  }
-
   if (items.length === 0) {
+    const emptyBody =
+      source === 'unavailable' ? evidence.emptyBodyUnavailable :
+      source === 'mock' ? evidence.emptyBodyMock :
+      evidence.emptyBodyLiveCache;
     return (
-      <div className="ue-inspector-empty">
-        <p className="ue-inspector-empty-title">{t.emptyTitle}</p>
-        <p className="ue-inspector-empty-body">{evidence.emptyBody}</p>
+      <div className="ue-inspector-pane">
+        <InspectorSourceStatus source={source} updatedAt={updatedAt} />
+        <div className="ue-inspector-empty">
+          <p className="ue-inspector-empty-title">{t.emptyTitle}</p>
+          <p className="ue-inspector-empty-body">{emptyBody}</p>
+        </div>
       </div>
     );
   }
@@ -49,6 +49,7 @@ export function EvidencePanel({ items, mode }: EvidencePanelProps) {
 
   return (
     <div className="ue-inspector-pane">
+      <InspectorSourceStatus source={source} updatedAt={updatedAt} />
       <header className="ue-inspector-pane-header">
         <h3 className="ue-inspector-pane-title">{evidence.title}</h3>
         <p className="ue-inspector-pane-subtitle">{evidence.subtitle(items.length)}</p>
