@@ -119,6 +119,13 @@ test('DrawerPanel still imports retained active MOCK_BB_DIAGNOSTIC_SUMMARY', () 
   assert.match(source, /from ['"]\.\.\/BehaviorTreeBlackboardDiagnosticPanel['"]/);
 });
 
+test('DrawerPanel no longer imports or exports legacy post-fix-report-generator or repair-session-store', () => {
+  const source = readFileSync(resolve(workbenchDir, 'DrawerPanel.tsx'), 'utf8');
+  assert.doesNotMatch(source, /PostFixReport/, 'DrawerPanel must not reference PostFixReport');
+  assert.doesNotMatch(source, /post-fix-report-generator/, 'DrawerPanel must not reference post-fix-report-generator');
+  assert.doesNotMatch(source, /repair-session-store/, 'DrawerPanel must not reference repair-session-store');
+});
+
 test('mandatory deleted workbench roots no longer exist', () => {
   for (const file of MANDATORY_DELETED_WORKBENCH_ROOTS) {
     const path = resolve(workbenchDir, file);
@@ -510,16 +517,60 @@ test('mandatory final orphan roots no longer exist', () => {
   }
 });
 
-test('production renderer import graph has no unreachable code modules (excluding vite-env.d.ts)', async () => {
+// Handoff production path has removed runtime consumers of these two legacy services.
+// The services are retained per original task boundaries (no service deletion allowed here)
+// and will be addressed in a future dedicated cleanup task.
+const RETAINED_LEGACY_SERVICE_EXCEPTIONS = new Set([
+  'services/post-fix-report-generator.ts',
+  'services/repair-session-store.ts',
+]);
+
+const RETAINED_LEGACY_SERVICE_EXCEPTION_REASONS: Record<string, string> = {
+  'services/post-fix-report-generator.ts':
+    'Handoff removed runtime consumer; retained per task boundary (no service deletion); pending dedicated cleanup',
+  'services/repair-session-store.ts':
+    'Handoff removed runtime consumer; retained per task boundary (no service deletion); pending dedicated cleanup',
+};
+
+test('retained legacy service exceptions still exist on disk', () => {
+  for (const path of RETAINED_LEGACY_SERVICE_EXCEPTIONS) {
+    const abs = resolve(rendererDir, path);
+    assert.equal(
+      existsSync(abs),
+      true,
+      `retained legacy service must still exist: ${path} — ${RETAINED_LEGACY_SERVICE_EXCEPTION_REASONS[path] ?? 'no reason recorded'}`,
+    );
+  }
+});
+
+test('retained legacy service exception set is exactly the two documented paths', () => {
+  assert.equal(RETAINED_LEGACY_SERVICE_EXCEPTIONS.size, 2, 'exception set must contain exactly 2 paths');
+  assert.equal(
+    RETAINED_LEGACY_SERVICE_EXCEPTIONS.has('services/post-fix-report-generator.ts'),
+    true,
+    'post-fix-report-generator.ts must be a retained exception',
+  );
+  assert.equal(
+    RETAINED_LEGACY_SERVICE_EXCEPTIONS.has('services/repair-session-store.ts'),
+    true,
+    'repair-session-store.ts must be a retained exception',
+  );
+});
+
+test('production renderer import graph has no unreachable code modules (excluding vite-env.d.ts and retained legacy service exceptions)', async () => {
   const entries = await walkRenderer(rendererDir);
   const { reachable, all } = buildImportGraph(entries);
   const codeFiles = all.filter(f => !f.endsWith('.css'));
   const expectedAmbient = new Set(['vite-env.d.ts']);
-  const unreachable = codeFiles.filter(f => !reachable.has(f) && !expectedAmbient.has(f));
+  const unreachable = codeFiles.filter(
+    f => !reachable.has(f)
+      && !expectedAmbient.has(f)
+      && !RETAINED_LEGACY_SERVICE_EXCEPTIONS.has(f),
+  );
   assert.equal(
     unreachable.length,
     0,
-    `unreachable code modules (excluding vite-env.d.ts):\n${unreachable.join('\n')}`,
+    `unreachable code modules (excluding vite-env.d.ts and retained legacy exceptions):\n${unreachable.join('\n')}`,
   );
 });
 

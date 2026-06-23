@@ -1264,6 +1264,63 @@ export interface QueueCopy {
 
 // ── Handoff ──
 
+export interface HandoffSourceBoundaryCopy {
+  sourceLabel: string;
+  updatedAtLabel: string;
+  reasonLabel: string;
+  kinds: {
+    live: string;
+    'persisted-real': string;
+    cache: string;
+    mock: string;
+    unavailable: string;
+  };
+  reasons: {
+    'bridge-live': string;
+    'bridge-cache': string;
+    'renderer-live': string;
+    'persisted-agent-session': string;
+    'live-pending-approval': string;
+    'mock-fixture': string;
+    'no-live-data': string;
+    'not-loaded': string;
+  };
+  noBtBlackboardLiveData: string;
+  noManifestLiveData: string;
+  noApprovalLiveData: string;
+  noRepairSessionData: string;
+  btBlackboardTitle: string;
+  manifestsTitle: string;
+  approvalGatesTitle: string;
+  repairSessionTitle: string;
+  proposalIdLabel: string;
+  proposedAtLabel: string;
+  proposalKindLabel: string;
+  operationKindLabel: string;
+  summaryLabel: string;
+  approvalIdLabel: string;
+  requestedAtLabel: string;
+  decidedAtLabel: string;
+  decisionLabel: string;
+  noteLabel: string;
+  sessionIdLabel: string;
+  scopeLabel: string;
+  stateLabel: string;
+  targetAssetLabel: string;
+  proposalCountLabel: string;
+  sandboxPresentLabel: string;
+  approvalPresentLabel: string;
+  promotePresentLabel: string;
+  approvalDecisions: {
+    pending: string;
+    approved: string;
+    rejected: string;
+    draft: string;
+    'ready-for-review': string;
+    unknown: string;
+  };
+}
+
 export interface HandoffCopy {
   title: string;
   copied: string; copyFailed: string; copyPackage: string;
@@ -1332,6 +1389,7 @@ export interface HandoffCopy {
   mdTotalEntries: string; mdBreakdown: string;
   mdNodeStatusSummary: (parts: string) => string;
   mdNodeEvidenceSummary: (nodes: number, items: number) => string;
+  sourceBoundary: HandoffSourceBoundaryCopy;
 }
 
 // ── Investigation Question Matrix (E56) ──

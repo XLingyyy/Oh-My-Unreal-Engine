@@ -19,21 +19,37 @@ import { InfrastructureClosurePanel } from '../InfrastructureClosurePanel';
 import ChangePlanPackageWorkspace from '../ChangePlanPackageWorkspace';
 import BlueprintChangeWorkspacePanel from '../BlueprintChangeWorkspacePanel';
 import { MOCK_BB_DIAGNOSTIC_SUMMARY } from '../BehaviorTreeBlackboardDiagnosticPanel';
+import { buildHandoffSourceModel } from './handoffSourceAdapter';
 
 type WorkbenchState = ReturnType<typeof useAgentWorkbenchState>;
 
 interface DrawerPanelProps {
   state: WorkbenchState;
   client: BridgeClient;
+  isMockClient: boolean;
   isCommandPaletteOpen: boolean;
 }
 
-export function DrawerPanel({ state, isCommandPaletteOpen }: DrawerPanelProps) {
+export function DrawerPanel({
+  state,
+  isMockClient,
+  isCommandPaletteOpen,
+}: DrawerPanelProps) {
   const { copy } = useDesktopCopy();
   const snapshot = state.bridge.snapshot;
   const drawer = state.drawer;
   const investigation = state.investigation;
   const context = state.context;
+  const handoffSourceModel = buildHandoffSourceModel({
+    isMockClient,
+    snapshot,
+    bridgeError: state.bridge.error,
+    selectedSession: state.agent.selectedSession,
+    pendingApproval: state.agent.selectedApproval ?? null,
+    graphDetail: context.graphDetail,
+    queueItemCount: investigation.queueItems.length,
+    btBlackboardSummary: isMockClient ? MOCK_BB_DIAGNOSTIC_SUMMARY : null,
+  });
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -196,7 +212,7 @@ export function DrawerPanel({ state, isCommandPaletteOpen }: DrawerPanelProps) {
       investigationReview={investigation.investigationReview}
       questionMatrixState={investigation.questionMatrixState}
       closureState={investigation.closureState}
-      btBbDiagnosticSummary={MOCK_BB_DIAGNOSTIC_SUMMARY}
+      sourceModel={handoffSourceModel}
     />
   ) : drawer.activeDrawerItem === 'closure' ? (
     <InfrastructureClosurePanel

@@ -478,6 +478,7 @@ export function AgentWorkbenchShell({ client, isMockClient }: AgentWorkbenchShel
       <DrawerPanel
         state={state}
         client={client}
+        isMockClient={isMockClient}
         isCommandPaletteOpen={palette.isOpen}
       />
       <CommandPalette

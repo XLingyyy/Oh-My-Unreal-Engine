@@ -8,9 +8,11 @@ import type { InvestigationReviewState } from './InvestigationSessionPanel';
 import type { QuestionMatrixState, QuestionGenerationInputs } from './InvestigationQuestionMatrixPanel';
 import { generateQuestions } from './InvestigationQuestionMatrixPanel';
 import type { InfrastructureClosureState } from './InfrastructureClosurePanel';
-import type { BtBbDiagnosticSummary } from './BehaviorTreeBlackboardDiagnosticPanel';
-import { getSelectedSession, getExecutionResult, getRollbackResult } from '../services/repair-session-store';
-import { generatePostFixReport } from '../services/post-fix-report-generator';
+import type { HandoffSourceBoundaryCopy } from '../i18n/types';
+import type {
+  HandoffSourceFact,
+  HandoffSourceModel,
+} from './workbench/handoffSourceAdapter';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -40,6 +42,20 @@ const PRESET_SECTIONS: Record<PackagePreset, Record<SectionKey, boolean>> = {
 
 type CopyState = 'idle' | 'copied' | 'error';
 
+function appendSourceLine(
+  lines: string[],
+  source: HandoffSourceFact,
+  copy: HandoffSourceBoundaryCopy,
+): void {
+  const updatedAt = source.updatedAt
+    ? ` · **${copy.updatedAtLabel}:** ${source.updatedAt}`
+    : '';
+  lines.push(
+    `**${copy.sourceLabel}:** ${copy.kinds[source.kind]} · **${copy.reasonLabel}:** ${copy.reasons[source.reason]}${updatedAt}`,
+  );
+  lines.push('');
+}
+
 // ── Props ──────────────────────────────────────────────────────
 
 interface Props {
@@ -59,8 +75,7 @@ interface Props {
   questionMatrixState?: QuestionMatrixState;
   // E57: Infrastructure Closure state
   closureState?: InfrastructureClosureState;
-  // E59: BT/BB Mock Diagnostic summary
-  btBbDiagnosticSummary?: BtBbDiagnosticSummary;
+  sourceModel: HandoffSourceModel;
 }
 
 // ── Component ──────────────────────────────────────────────────
@@ -79,9 +94,10 @@ export function InvestigationHandoffPanel({
   investigationReview,
   questionMatrixState,
   closureState,
-  btBbDiagnosticSummary,
+  sourceModel,
 }: Props) {
   const { copy } = useDesktopCopy();
+  const sourceBoundary = copy.handoff.sourceBoundary;
 
   const PRESET_LABELS: Record<PackagePreset, string> = {
     full: copy.handoff.presetFull,
@@ -387,7 +403,7 @@ export function InvestigationHandoffPanel({
 
     if (toggles.overview) {
       lines.push(copy.handoff.mdCurrentAsset);
-      lines.push('');
+      appendSourceLine(lines, sourceModel.sections.overview, sourceBoundary);
       if (currentAssetSummary) {
         lines.push(currentAssetSummary);
       } else if (snapshot.currentAsset) {
@@ -406,7 +422,7 @@ export function InvestigationHandoffPanel({
 
     if (toggles.queue) {
       lines.push(copy.handoff.mdQueueSummary);
-      lines.push('');
+      appendSourceLine(lines, sourceModel.sections.queue, sourceBoundary);
       lines.push(`- **${copy.common.totalItems}:** ${queueItems.length}`);
       lines.push(`- **${copy.common.evidenceItems}:** ${queueEvidenceCount}`);
       lines.push(`- **${copy.common.graphNodeItems}:** ${queueNodeCount}`);
@@ -464,7 +480,7 @@ export function InvestigationHandoffPanel({
 
     if (toggles.evidence) {
       lines.push(copy.handoff.mdEvidenceSummary);
-      lines.push('');
+      appendSourceLine(lines, sourceModel.sections.evidence, sourceBoundary);
       lines.push(`- **${copy.common.chains}:** ${evidenceChains.length}`);
       lines.push(`- **${copy.common.totalItems}:** ${evidenceItemCount}`);
       lines.push(`- **${copy.common.unresolved}:** ${unresolvedCount}`);
@@ -489,7 +505,7 @@ export function InvestigationHandoffPanel({
 
     if (toggles.graphDetail) {
       lines.push(copy.handoff.mdGraphDetail);
-      lines.push('');
+      appendSourceLine(lines, sourceModel.sections.graphDetail, sourceBoundary);
       if (!graphDetail?.selectedBlueprint) {
         lines.push(copy.handoff.mdNoGraphDetail);
       } else {
@@ -526,7 +542,7 @@ export function InvestigationHandoffPanel({
 
     if (toggles.recentLogs) {
       lines.push(copy.handoff.mdRecentLogs);
-      lines.push('');
+      appendSourceLine(lines, sourceModel.sections.recentLogs, sourceBoundary);
       const logs = snapshot.recentLogs;
       lines.push(`- **${copy.handoff.mdTotalEntries}:** ${logs.length}`);
       if (logErrorCount > 0 || logWarningCount > 0) {
@@ -640,7 +656,11 @@ export function InvestigationHandoffPanel({
           checklist: { contextReviewed: false, evidenceReviewed: false, graphReviewed: false, logsReviewed: false, queueTriaged: false, safetyBoundaryConfirmed: false, readyForHandoff: false },
         },
       };
-      const allQuestions = generateQuestions(qmInputs);
+      const allQuestions = generateQuestions(qmInputs).filter(
+        question =>
+          question.category !== 'bt-blackboard'
+          || sourceModel.sections.btBlackboard.kind === 'mock',
+      );
 
       if (allQuestions.length > 0) {
         const qmEntries = Object.keys(questionMatrixState.entries);
@@ -741,26 +761,36 @@ export function InvestigationHandoffPanel({
       lines.push('');
     }
 
-    // ── E80: Post-Fix Report ──
-    const e80Session = getSelectedSession();
-    if (e80Session && (getExecutionResult(e80Session.sessionId) || getRollbackResult(e80Session.sessionId))) {
-      const e80Report = generatePostFixReport({ session: e80Session });
-      if (e80Report) {
-        const pfr = copy.postFixReport;
-        lines.push(`## ${pfr.title}`);
-        lines.push('');
-        lines.push(e80Report.markdown);
-        lines.push('');
+    // ── Current persisted Agent repair session ───────────────
+    lines.push(sourceBoundary.repairSessionTitle);
+    appendSourceLine(lines, sourceModel.sections.repairSession, sourceBoundary);
+    if (sourceModel.repairSessionFact) {
+      const session = sourceModel.repairSessionFact;
+      lines.push(`- **${sourceBoundary.sessionIdLabel}:** ${session.sessionId}`);
+      lines.push(`- **${sourceBoundary.scopeLabel}:** ${session.scope}`);
+      lines.push(`- **${sourceBoundary.stateLabel}:** ${session.currentState}`);
+      lines.push(`- **${sourceBoundary.updatedAtLabel}:** ${session.updatedAt}`);
+      if (session.targetAssetPath) {
+        lines.push(`- **${sourceBoundary.targetAssetLabel}:** ${session.targetAssetPath}`);
       }
+      lines.push(`- **${sourceBoundary.proposalCountLabel}:** ${session.proposalCount}`);
+      lines.push(`- **${sourceBoundary.sandboxPresentLabel}:** ${session.hasSandbox ? copy.common.yes : copy.common.no}`);
+      lines.push(`- **${sourceBoundary.approvalPresentLabel}:** ${session.hasApproval ? copy.common.yes : copy.common.no}`);
+      lines.push(`- **${sourceBoundary.promotePresentLabel}:** ${session.hasPromote ? copy.common.yes : copy.common.no}`);
+    } else {
+      lines.push(sourceBoundary.noRepairSessionData);
     }
+    lines.push('');
 
-    // ── Behavior Tree / Blackboard Mock Diagnostics (E59) ────
-    if (btBbDiagnosticSummary) {
-      const d = btBbDiagnosticSummary;
+    // ── Behavior Tree / Blackboard boundary ──────────────────
+    lines.push(sourceBoundary.btBlackboardTitle);
+    appendSourceLine(lines, sourceModel.sections.btBlackboard, sourceBoundary);
+    if (
+      sourceModel.sections.btBlackboard.kind === 'mock'
+      && sourceModel.btBlackboardSummary
+    ) {
+      const d = sourceModel.btBlackboardSummary;
       const btbb = copy.behaviorTreeBlackboard;
-      lines.push(btbb.hoSectionTitle);
-      lines.push('');
-      lines.push(`- **${btbb.sourceLabel}:** ${btbb.hoSourceLine}`);
       lines.push(`- **${btbb.assetName}:** ${d.assetName} (${d.assetPath})`);
       lines.push(`- **${btbb.nodeCount}:** ${d.nodeCount} (${btbb.kindDecorator}: ${d.decoratorCount}, ${btbb.kindService}: ${d.serviceCount}, ${btbb.kindTask}: ${d.taskCount})`);
       lines.push(`- **${btbb.bbKeyCount}:** ${d.bbKeyCount}`);
@@ -774,34 +804,56 @@ export function InvestigationHandoffPanel({
       }
       lines.push('');
       lines.push(`> ${btbb.hoNoUeData}`);
-      lines.push('');
+    } else {
+      lines.push(sourceBoundary.noBtBlackboardLiveData);
     }
-
-    // ── Change Manifest Handoff (E66) ──
-    lines.push('## Change Manifest Handoff');
-    lines.push('');
-    lines.push('- **Status:** Ready (local mock fixture)');
-    lines.push('- **Manifests available:** 3 (plan-001, plan-002, plan-003)');
-    lines.push('- **Patch Preview Workspace:** Open Patch Preview tab to review detailed diffs');
-    lines.push('- **Diff categories:** Asset summary, Blueprint variables/nodes/wires, BT nodes, Blackboard keys, Manual steps');
-    lines.push('- **Safety:** Conceptual preview only. No UE writes, no compile/PIE/Automation, no patch application.');
-    lines.push('');
-    lines.push('> **Not executable in this phase.** Change manifests are human-reviewable previews only. Execution is a future capability.');
     lines.push('');
 
-    // ── Approval Gate / Phase Closure (E67) ──
-    const ag = copy.approvalGate;
-    lines.push(ag.hoSectionTitle);
+    // ── Change manifests ─────────────────────────────────────
+    lines.push(sourceBoundary.manifestsTitle);
+    appendSourceLine(lines, sourceModel.sections.manifests, sourceBoundary);
+    if (sourceModel.manifestFacts.length === 0) {
+      lines.push(sourceBoundary.noManifestLiveData);
+    } else {
+      for (const manifest of sourceModel.manifestFacts) {
+        lines.push(`### ${manifest.proposalId}`);
+        lines.push(`- **${sourceBoundary.proposalIdLabel}:** ${manifest.proposalId}`);
+        if (manifest.proposedAt) {
+          lines.push(`- **${sourceBoundary.proposedAtLabel}:** ${manifest.proposedAt}`);
+        }
+        lines.push(`- **${sourceBoundary.proposalKindLabel}:** ${manifest.proposalKind}`);
+        lines.push(`- **${sourceBoundary.operationKindLabel}:** ${manifest.operationKind}`);
+        if (manifest.summary) {
+          lines.push(`- **${sourceBoundary.summaryLabel}:** ${manifest.summary}`);
+        }
+        lines.push('');
+      }
+    }
     lines.push('');
-    lines.push(`${ag.hoPhaseStatus} Review-only workflow — local memory-only approval state.`);
-    lines.push(`${ag.hoPlanGate} Ready (3 local mock plans)`);
-    lines.push(`${ag.hoManifestGate} Ready (3 local mock manifests)`);
-    lines.push(`${ag.hoApprovalGate} Ready (3 local mock gates: draft, ready_for_review, draft)`);
-    lines.push(`${ag.hoExecutionBlocked}`);
-    lines.push('');
-    lines.push(ag.hoFutureRedZone);
-    lines.push('');
-    lines.push(`> ${ag.hoSafetyNote} ${ag.hoNotExecutable}`);
+
+    // ── Approval gates ───────────────────────────────────────
+    lines.push(sourceBoundary.approvalGatesTitle);
+    appendSourceLine(lines, sourceModel.sections.approvalGates, sourceBoundary);
+    if (sourceModel.approvalFacts.length === 0) {
+      lines.push(sourceBoundary.noApprovalLiveData);
+    } else {
+      for (const approval of sourceModel.approvalFacts) {
+        const approvalHeading = approval.approvalId ?? copy.common.unavailable;
+        lines.push(`### ${approvalHeading}`);
+        lines.push(`- **${sourceBoundary.approvalIdLabel}:** ${approvalHeading}`);
+        if (approval.requestedAt) {
+          lines.push(`- **${sourceBoundary.requestedAtLabel}:** ${approval.requestedAt}`);
+        }
+        if (approval.decidedAt) {
+          lines.push(`- **${sourceBoundary.decidedAtLabel}:** ${approval.decidedAt}`);
+        }
+        lines.push(`- **${sourceBoundary.decisionLabel}:** ${sourceBoundary.approvalDecisions[approval.decision]}`);
+        if (approval.note) {
+          lines.push(`- **${sourceBoundary.noteLabel}:** ${approval.note}`);
+        }
+        lines.push('');
+      }
+    }
     lines.push('');
 
     if (suggestedActions.length > 0) {
@@ -815,7 +867,7 @@ export function InvestigationHandoffPanel({
 
     if (toggles.safety) {
       lines.push(copy.handoff.mdSafetyBoundary);
-      lines.push('');
+      appendSourceLine(lines, sourceModel.sections.safety, sourceBoundary);
       lines.push(copy.handoff.mdSafetyText);
       lines.push('');
     }
@@ -852,9 +904,10 @@ export function InvestigationHandoffPanel({
     suggestedActions,
     sectionToggles,
     investigationReview,
-    lastUpdatedAt,
+    questionMatrixState,
     closureState,
-    btBbDiagnosticSummary,
+    sourceModel,
+    sourceBoundary,
   ]);
 
   const markdown = buildMarkdown();
